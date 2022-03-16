@@ -1,0 +1,13 @@
+[package]
+name = "rui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+url = "2"
+winit = "0.26"
+raw-window-handle = "0.4"
+wgpu = "0.12"
+async-trait = "0.1"

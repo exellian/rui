@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use raw_window_handle::HasRawWindowHandle;
 use wgpu::Backends;
-use crate::component::Component;
+use crate::node::Node;
 use crate::renderer::wgpu::renderer_job::RenderJob;
 use crate::surface::Surface;
 use async_trait::async_trait;
@@ -98,7 +98,7 @@ impl<T> crate::renderer::Renderer<T> for Renderer
         Ok(sid)
     }
 
-    async fn mount_component(&mut self, surface: Self::SurfaceHandle, component: &Component) -> Result<(), Self::Error> {
+    async fn mount_component(&mut self, surface: Self::SurfaceHandle, component: &Node) -> Result<(), Self::Error> {
         todo!()
     }
 }

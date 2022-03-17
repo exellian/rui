@@ -1,9 +1,4 @@
 mod component;
-mod composition;
-mod text;
-mod image;
-mod border;
-mod base;
-mod grid;
+pub mod context;
 
 pub use component::Component;

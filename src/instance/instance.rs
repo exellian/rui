@@ -1,34 +1,29 @@
-use crate::event::EventLoop;
-use crate::renderer::Renderer;
-use crate::state::State;
-use crate::surface::{Surface, SurfaceFactory};
+use tokio::sync::mpsc;
+use crate::event::{Event, EventLoop};
+use crate::instance::backend::Backend;
+use crate::Node;
+use crate::util::Sender;
 
-pub struct Instance<E, S, SF, R> where
-    E: EventLoop<Surface=S>,
-    S: Surface<EventLoop=E>,
-    SF: SurfaceFactory<Surface=S>,
-    R: Renderer<S>
+pub struct Instance<B> where
+    B: Backend
 {
-    event_loop: E,
-    surface_factory: SF,
-    renderer: R
+    event_loop: B::EventLoop,
+    renderer: B::Renderer
 }
-impl<E, S, SF, R> Instance<E, S, SF, R> where
-    E: EventLoop<Surface=S>,
-    S: Surface<EventLoop=E>,
-    SF: SurfaceFactory<Surface=S>,
-    R: Renderer<S>
+impl<B> Instance<B> where
+    B: Backend
 {
 
-    pub fn new(event_loop: E, surface_factory: SF, renderer: R) -> Self {
+    pub fn new(event_loop: B::EventLoop, renderer: B::Renderer) -> Self {
         Instance {
             event_loop,
-            surface_factory,
             renderer
         }
     }
 
-    pub async fn run<T>(self, state: T) where T: State {
+    pub fn run(self, root: &Node) {
+        let (sender, receiver) = mpsc::unbounded_channel();
+        self.event_loop.run(Sender::new(sender));
 
     }
 }

@@ -7,6 +7,7 @@ impl Flags {
     pub const TRANSPARENT: Self = Flags::new(0x1 << 1);
     pub const AUTO_WIDTH: Self = Flags::new(0x1 << 2);
     pub const AUTO_HEIGHT: Self = Flags::new(0x1 << 3);
+    pub const DEFAULT: Self = Self::AUTO_WIDTH | Self::AUTO_HEIGHT;
 
     const fn new(v: u32) -> Self {
         Flags(v)

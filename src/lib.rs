@@ -7,17 +7,17 @@ mod instance;
 mod event;
 mod component;
 use crate::component::Component;
-use crate::component::context::Context;
 use crate::instance::Backend;
 use crate::node::Node;
+use async_trait::async_trait;
+use crate::component::context::Context;
 
-struct Mybutton {
-    pressed: bool,
-}
+struct Root;
 
-impl Component for Mybutton {
+#[async_trait]
+impl Component for Root {
 
-    fn node<B>(&mut self, _: &mut Context<B>) -> Node where Self: Sized, B: Backend {
+    async fn node<B>(&mut self, context: &mut Context<B>) -> Node where Self: Sized, B: Backend {
         todo!()
     }
 }
@@ -35,26 +35,31 @@ impl State for Mybutton {
 }
 */
 
+pub enum UserEvent {
+    
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use crate::instance::Instance;
+    use crate::surface::Surface;
+    use crate::util::Extent;
 
     #[test]
     fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-        /*
-                let r = Renderer::default();
-                let l = EventLoop::default();
-                Instance::new(&r, &l).await;
-
-                let instance = Instance::new();
-                instance.create_window()
-                let c = layer([
-
-                ]);
-                instance.create_window()
-                instance.run(state).await;
-                */
+        let mut instance = Instance::default();
+        let surface = Surface::builder()
+            .title("Test")
+            .size(Extent {
+                width: 1280,
+                height: 720
+            })
+            .build(&instance)
+            .expect("Failed to create window!");
+        
+        let root = component::component(Root);
+        instance.mount(&surface, root);
+        instance.run()
     }
 }

@@ -1,4 +1,4 @@
 pub struct Extent {
-    width: usize,
-    height: usize
+    pub width: u32,
+    pub height: u32
 }

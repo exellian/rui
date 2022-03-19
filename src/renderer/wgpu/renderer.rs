@@ -1,6 +1,5 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use raw_window_handle::HasRawWindowHandle;
 use wgpu::Backends;
 use crate::node::Node;
@@ -8,7 +7,7 @@ use crate::renderer::wgpu::renderer_job::RenderJob;
 use crate::surface::Surface;
 use async_trait::async_trait;
 use crate::renderer::wgpu::renderer_error::RendererError;
-use crate::renderer::wgpu::surface_handle::SurfaceHandle;
+use crate::util;
 
 pub struct RendererBase {
     instance: wgpu::Instance,
@@ -58,47 +57,67 @@ pub struct Renderer {
     jobs: HashMap<u64, RenderJob>,
 }
 impl Renderer {
-
-    fn surface_id<T>(h: &T) -> u64 where T: Hash {
-        let mut hasher = DefaultHasher::new();
-        h.hash(&mut hasher);
-        hasher.finish()
+    fn new() -> Self {
+        Renderer {
+            base: None,
+            surfaces: HashMap::new(),
+            jobs: HashMap::new()
+        }
+    }
+}
+impl Default for Renderer {
+    fn default() -> Self {
+        Renderer::new()
     }
 }
 
 #[async_trait]
-impl<T> crate::renderer::Renderer<T> for Renderer
-    where T: 'static + Surface + Hash + HasRawWindowHandle + Send + Sync
+impl<E, T> crate::renderer::Renderer<E, T> for Renderer where
+    E: 'static,
+    T: 'static + Surface<E> + Hash + HasRawWindowHandle + Send + Sync
 {
     type Error = RendererError;
-    type SurfaceHandle = SurfaceHandle;
 
-    async fn mount_surface(&mut self, surface: &T) -> Result<Self::SurfaceHandle, Self::Error> {
-        let sid = Renderer::surface_id(surface);
-        if self.surfaces.contains_key(&sid) {
-            return Ok(sid);
-        }
-        // Dynamically creating render base for first surface that gets mounted
-        let s = match &mut self.base {
-            Some(base) => unsafe {
-                base.instance.create_surface(surface)
-            },
-            rb@None => {
-                let instance = wgpu::Instance::new(Backends::all());
-                // Creating a surface first before creating the base, so that
-                // the base can use it to find a suitable adapter (GPU)
-                let first_surface = unsafe {
-                    instance.create_surface(surface)
+    //TODO split up in parts and functions that make sense
+    async fn mount(&mut self, surface: &T, node: &Node) -> Result<(), Self::Error> {
+        let sid = util::id(surface);
+        let surface = match self.surfaces.get(&sid) {
+            None => {
+                // Dynamically creating render base for the first surface that gets mounted
+                let surface_handle = match &mut self.base {
+                    Some(base) => {
+                        unsafe {
+                            base.instance.create_surface(surface)
+                        }
+                    },
+                    rb@None => {
+                        let instance = wgpu::Instance::new(Backends::all());
+                        // Creating a surface first before creating the base, so that
+                        // the base can use it to find a suitable adapter (GPU)
+                        let first_surface = unsafe {
+                            instance.create_surface(surface)
+                        };
+                        *rb = Some(RendererBase::new(instance, &first_surface).await?);
+                        first_surface
+                    }
                 };
-                *rb = Some(RendererBase::new(instance, &first_surface).await?);
-                first_surface
+                let size = surface.inner_size();
+                let base = self.base.as_ref().unwrap();
+                let swapchain_format = surface_handle.get_preferred_format(&base.adapter).unwrap();
+                let mut config = wgpu::SurfaceConfiguration {
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    format: swapchain_format,
+                    width: size.width,
+                    height: size.height,
+                    present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
+                };
+                surface_handle.configure(&base.device, &config);
+                self.surfaces.insert(sid, surface_handle);
+                self.surfaces.get(&sid).unwrap()
             }
+            Some(sh) => sh
         };
-        self.surfaces.insert(sid, s);
-        Ok(sid)
-    }
 
-    async fn mount_component(&mut self, surface: Self::SurfaceHandle, component: &Node) -> Result<(), Self::Error> {
-        todo!()
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
 pub struct Offset {
-    x: isize,
-    y: isize
+    pub x: isize,
+    pub y: isize
 }

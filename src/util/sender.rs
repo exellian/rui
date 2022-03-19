@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use tokio::sync::mpsc;
 use crate::util::Handler;
 
@@ -7,7 +8,7 @@ impl<T> Sender<T> {
         Sender(sender)
     }
 }
-impl<T> Handler<T> for Sender<T> {
+impl<T> Handler<T> for Sender<T> where T: Debug {
     type Error = mpsc::error::SendError<T>;
 
     fn handle(&mut self, event: T) -> Result<(), Self::Error> {

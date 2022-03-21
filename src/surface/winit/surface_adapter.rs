@@ -5,7 +5,7 @@ use crate::util::Extent;
 
 pub struct SurfaceAdapter(u64, winit::window::Window);
 impl SurfaceAdapter {
-    pub fn new<T>(window: winit::window::Window) -> Self {
+    pub fn new(window: winit::window::Window) -> Self {
         // Ids for hashing:
         // Every window instance should have an unique id
         // to be able to be hashed (see: impl Hash for SurfaceAdapter)
@@ -17,7 +17,7 @@ impl SurfaceAdapter {
 impl crate::surface::SurfaceAdapter for SurfaceAdapter {
 
     fn inner_size(&self) -> Extent {
-        let size = self.0.inner_size();
+        let size = self.1.inner_size();
         Extent {
             width: size.width,
             height: size.height
@@ -31,6 +31,6 @@ impl Hash for SurfaceAdapter {
 }
 unsafe impl HasRawWindowHandle for SurfaceAdapter {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        self.0.raw_window_handle()
+        self.1.raw_window_handle()
     }
 }

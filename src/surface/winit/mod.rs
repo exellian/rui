@@ -1,3 +1,5 @@
 mod surface_factory;
-mod winit;
 mod surface_adapter;
+
+pub use surface_adapter::SurfaceAdapter;
+pub use surface_factory::SurfaceFactory;

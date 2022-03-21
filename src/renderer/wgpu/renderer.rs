@@ -4,10 +4,10 @@ use raw_window_handle::HasRawWindowHandle;
 use wgpu::Backends;
 use crate::node::Node;
 use crate::renderer::wgpu::renderer_job::RenderJob;
-use crate::surface::Surface;
+use crate::surface::{Surface, SurfaceAdapter};
 use async_trait::async_trait;
 use crate::renderer::wgpu::renderer_error::RendererError;
-use crate::util;
+use crate::{Backend, util};
 
 pub struct RendererBase {
     instance: wgpu::Instance,
@@ -72,14 +72,14 @@ impl Default for Renderer {
 }
 
 #[async_trait]
-impl<E, T> crate::renderer::Renderer<E, T> for Renderer where
-    E: 'static,
-    T: 'static + Surface<E> + Hash + HasRawWindowHandle + Send + Sync
+impl<B> crate::renderer::Renderer<B> for Renderer where
+    B: Backend,
+    B::Surface: HasRawWindowHandle,
 {
     type Error = RendererError;
 
     //TODO split up in parts and functions that make sense
-    async fn mount(&mut self, surface: &T, node: &Node) -> Result<(), Self::Error> {
+    async fn mount(&mut self, surface: &B::Surface, node: &Node) -> Result<(), Self::Error> {
         let sid = util::id(surface);
         let surface = match self.surfaces.get(&sid) {
             None => {

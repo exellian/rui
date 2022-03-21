@@ -20,7 +20,11 @@ impl Default for BaseNode {
                     height: 0
                 }
             },
-            background: ()
+            background: Color::RGB {
+                r: 0,
+                g: 0,
+                b: 0
+            }
         }
     }
 }

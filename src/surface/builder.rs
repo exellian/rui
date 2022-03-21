@@ -1,18 +1,22 @@
+use std::marker::PhantomData;
 use crate::Backend;
-use crate::instance::Instance;
+use crate::instance::{Instance, WGpu};
 use crate::surface::surface_attributes::SurfaceAttributes;
-use crate::surface::surface_factory::SurfaceFactory;
 use crate::util::Extent;
+use crate::instance;
+use crate::surface::SurfaceFactory;
 
-pub struct Builder<B> where B: Backend {
+pub struct Builder<B=WGpu> where B: Backend {
     size: Option<Extent>,
     title: Option<String>,
+    _b: PhantomData<B>
 }
-impl<B> Builder<B> where B: Backend {
+impl<B> Builder<B> where B: Backend + 'static {
     pub fn new() -> Self {
         Builder {
             size: None,
-            title: None
+            title: None,
+            _b: PhantomData
         }
     }
 
@@ -29,14 +33,11 @@ impl<B> Builder<B> where B: Backend {
 
     //TODO add more properties to builder
 
-    pub fn build(self, instance: &Instance<B>) -> Result<
-        B::Surface, 
-        <B::SurfaceFactory as SurfaceFactory<B::UserEvent>>::Error
-    > {
+    pub fn build(self, instance: &Instance<B>) -> Result<B::Surface, <B::SurfaceFactory as SurfaceFactory>::Error> {
         let attributes = SurfaceAttributes {
             size: self.size.unwrap(),
             title: self.title.unwrap()
         };
-        
+        instance.create_surface(attributes)
     }
 }

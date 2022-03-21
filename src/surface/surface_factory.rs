@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt::Debug;
 use crate::event::EventLoop;
 use crate::surface::builder::Builder;
 use crate::surface::surface_adapter::SurfaceAdapter;
@@ -10,16 +11,16 @@ use crate::surface::surface_attributes::SurfaceAttributes;
 ///
 /// # Generics
 /// * `T` - A user defined type to enable own events
-pub trait SurfaceFactory<T> where T: 'static {
+pub trait SurfaceFactory {
 
     /// The type for the event loop that runs on the main thread.
     /// It should handle Input, Os, Window Events, etc...
     /// It should be compatible with the surface type that is
     /// instantiated by the factory
-    type EventLoop: EventLoop<T, Surface=Self::Surface>;
+    type EventLoopTarget;
 
     /// Error type specific to the surface
-    type Error: Error;
+    type Error: Error + Debug;
 
     /// The surface type that is created by the factory
     /// e.g: winit::window::Window
@@ -30,5 +31,5 @@ pub trait SurfaceFactory<T> where T: 'static {
     /// # Arguments
     /// * `attributes` - The surface builder that contains all of the surface params
     /// * `event_loop` - The event loop that should handle the events from the surface
-    fn build(event_loop: &Self::EventLoop, attributes: SurfaceAttributes) -> Result<Self::Surface, Self::Error>;
+    fn build(event_loop: &Self::EventLoopTarget, attributes: SurfaceAttributes) -> Result<Self::Surface, Self::Error>;
 }

@@ -4,7 +4,7 @@ use crate::util::Handler;
 
 #[derive(Debug)]
 pub enum Event<T> {
-    UserEvent(T)
+    UserEvent(T),
 }
 impl<F, T> Handler<Event<T>> for F where T: Debug, F: FnMut(Event<T>) {
     type Error = Infallible;

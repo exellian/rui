@@ -1,10 +1,11 @@
+use std::sync::mpsc;
 use crate::Backend;
-use crate::instance::error::Error;
 use crate::surface::{SurfaceAttributes, SurfaceFactory};
 
-pub enum MainThreadRequest {
-    CreateSurface(SurfaceAttributes)
+pub enum MainThreadRequest<B> where B: Backend {
+    CreateSurface {
+        attributes: SurfaceAttributes,
+        sender: mpsc::Sender<Result<B::Surface, <B::SurfaceFactory as SurfaceFactory>::Error>>
+    }
 }
-pub enum MainThreadResponse<B> where B: Backend {
-    Surface(Result<B::Surface, Error<B>>)
-}
+

@@ -1,8 +1,7 @@
 use std::fmt::Debug;
+use std::ops::Deref;
 use winit::event_loop::ControlFlow;
 use crate::event::event::Event;
-use crate::surface;
-use crate::util::Handler;
 
 pub struct EventLoop<T>(pub(crate) winit::event_loop::EventLoop<T>) where T: 'static;
 
@@ -12,18 +11,23 @@ impl<T> Default for EventLoop<T> where T: 'static {
     }
 }
 impl<T> super::super::EventLoop<T> for EventLoop<T> where T: Debug {
-    type Surface = surface::winit::Surface;
+    type EventLoopTarget = winit::event_loop::EventLoopWindowTarget<T>;
 
-    fn run<H>(self, mut handler: H) where H: Handler<Event<T>> + 'static {
+    fn run<F>(self, mut handler: F) where F: FnMut(Event<T>, &Self::EventLoopTarget) + 'static {
         self.0.run(move |winit_event, l, control_flow| {
             *control_flow = ControlFlow::Wait;
             let event = match winit_event.try_into() {
                 Ok(e) => e,
                 Err(_) => return
             };
-            if let Err(err) = handler.handle(event) {
-                eprintln!("{}", err)
-            }
+            handler(event, l);
         })
+    }
+}
+impl<T> Deref for EventLoop<T> {
+    type Target = winit::event_loop::EventLoopWindowTarget<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

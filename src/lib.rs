@@ -1,13 +1,16 @@
-mod node;
-mod util;
-mod math;
-mod renderer;
-mod surface;
-mod instance;
-mod event;
-mod component;
+extern crate core;
+
+pub mod node;
+pub mod util;
+pub mod math;
+pub mod renderer;
+pub mod surface;
+pub mod instance;
+pub mod event;
+pub mod component;
+
 use crate::component::Component;
-use crate::instance::Backend;
+use crate::instance::{Backend, Instance};
 use crate::node::Node;
 use async_trait::async_trait;
 use crate::component::context::Context;
@@ -37,29 +40,4 @@ impl State for Mybutton {
 
 pub enum UserEvent {
     
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-    use crate::instance::Instance;
-    use crate::surface::Surface;
-    use crate::util::Extent;
-
-    #[test]
-    fn it_works() {
-        let mut instance = Instance::default();
-        let surface = Surface::builder()
-            .title("Test")
-            .size(Extent {
-                width: 1280,
-                height: 720
-            })
-            .build(&instance)
-            .expect("Failed to create window!");
-        
-        let root = component::component(Root);
-        instance.mount(&surface, root);
-        instance.run()
-    }
 }

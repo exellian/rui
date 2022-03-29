@@ -12,7 +12,11 @@ url = "2"
 winit = "0.26"
 raw-window-handle = "0.4"
 wgpu = "0.12"
+wgpu-types = "0.12"
 async-trait = "0.1"
+async-recursion = "1"
+pollster = "0.2"
+bytemuck = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 
 [[test]]

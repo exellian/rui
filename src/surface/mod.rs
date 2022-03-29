@@ -6,6 +6,7 @@ mod builder;
 mod surface_factory;
 mod surface_adapter;
 mod surface_attributes;
+mod surface_id;
 
 pub use surface::Surface;
 pub use surface_event::SurfaceEvent;
@@ -13,3 +14,4 @@ pub use surface_option::SurfaceOption;
 pub use surface_factory::SurfaceFactory;
 pub use surface_adapter::SurfaceAdapter;
 pub use surface_attributes::SurfaceAttributes;
+pub use surface_id::SurfaceId;

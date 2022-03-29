@@ -1,7 +1,8 @@
-use std::hash::Hash;
+use crate::surface::SurfaceId;
 use crate::util::Extent;
 
-pub trait SurfaceAdapter: Hash {
+pub trait SurfaceAdapter {
 
     fn inner_size(&self) -> Extent;
+    fn id(&self) -> SurfaceId;
 }

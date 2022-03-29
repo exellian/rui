@@ -27,6 +27,6 @@ pub trait Backend: Sync + Send + Sized {
     type EventLoop: EventLoop<Self::UserEvent, EventLoopTarget=Self::EventLoopTarget> + Deref<Target=Self::EventLoopTarget>;
     
     /// The renderer to use that supports the given surface
-    type Renderer: Renderer<Self>;
+    type Renderer: Renderer<Self> + Send;
 
 }

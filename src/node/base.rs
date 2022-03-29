@@ -1,9 +1,9 @@
 use crate::util::{Color, Extent, Flags, Offset, Rect};
 
 pub struct BaseNode {
-    flags: Flags,
-    bounding_rect: Rect,
-    background: Color,
+    pub(crate) flags: Flags,
+    pub(crate) bounding_rect: Rect,
+    pub(crate) background: Color,
 }
 
 impl Default for BaseNode {
@@ -20,11 +20,7 @@ impl Default for BaseNode {
                     height: 0
                 }
             },
-            background: Color::RGB {
-                r: 0,
-                g: 0,
-                b: 0
-            }
+            background: Color::BLACK
         }
     }
 }

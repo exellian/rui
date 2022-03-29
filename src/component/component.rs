@@ -7,19 +7,10 @@ use async_trait::async_trait;
 /// and should hold the state of the component
 /// and should handle incoming events on the component
 #[async_trait]
-pub trait Component: Sync {
+pub trait Component: Sync + Send {
 
-    async fn on_click<B>(&mut self, context: &mut Context<B>)
-        where Self: Sized, B: Backend {}
-    async fn on_mouse_in<B>(&mut self, context: &mut Context<B>)
-        where Self: Sized, B: Backend {}
-    async fn on_mouse_out<B>(&mut self, context: &mut Context<B>)
-        where Self: Sized, B: Backend {}
-    async fn on_hover<B>(&mut self, context: &mut Context<B>)
-        where Self: Sized, B: Backend {}
-    async fn on_event<B>(&mut self, context: &mut Context<B>)
-        where Self: Sized, B: Backend {}
-
-    async fn node<B>(&mut self, context: &mut Context<B>) -> Node
+    async fn on_event<B>(&mut self, ctx: &mut Context<B>)
         where Self: Sized, B: Backend;
+
+    async fn node(&self) -> Node;
 }

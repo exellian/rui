@@ -1,27 +1,22 @@
-use std::cell::{RefCell};
 use std::collections::{BTreeMap};
-use std::ops::Deref;
-use std::sync;
 use std::sync::{Arc, mpsc};
-use std::sync::mpsc::SendError;
 
-use tokio::sync::{RwLock};
+use tokio::sync::Mutex;
 use crate::event::{Event, EventLoop};
 use crate::{Backend, Node};
 use crate::instance::backend::WGpu;
 use crate::instance::error::Error;
 use crate::instance::main_thread::{MainThreadRequest};
-use crate::surface::{SurfaceAttributes, SurfaceFactory};
+use crate::renderer::Renderer;
+use crate::surface::{SurfaceAdapter, SurfaceAttributes, SurfaceEvent, SurfaceFactory, SurfaceId};
 
 pub struct Instance<B> where
     B: Backend
 {
     /// Event loop of the main thread.
     main_thread_event_loop: Option<B::EventLoop>,
-    // multi_threaded: bool, Single threaded not supported yet
-    runtime: tokio::runtime::Runtime,
-    pub(crate) renderer: Arc<RwLock<B::Renderer>>,
-    nodes: BTreeMap<u64, Node>,
+    pub(crate) renderer: B::Renderer,
+    nodes: BTreeMap<SurfaceId, Node>,
     main_thread_sender: Option<mpsc::Sender<MainThreadRequest<B>>>,
 }
 //TODO check thread safety for Instance struct
@@ -43,25 +38,22 @@ impl<B> Instance<B> where
     pub fn new(event_loop: B::EventLoop, renderer: B::Renderer) -> Self {
         Instance {
             main_thread_event_loop: Some(event_loop),
-            runtime: tokio::runtime::Builder::new_current_thread()
-                .build()
-                .expect("Failed to create async runtime!"),
-            renderer: Arc::new(RwLock::new(renderer)),
+            renderer,
             nodes: BTreeMap::new(),
             main_thread_sender: None
         }
     }
 
-    pub(crate) async fn mount(&mut self, surface: &B::Surface, node: Node) -> Result<(), Error<B>>{
-        /*
-        let sid = util::id(surface);
+    pub(crate) async fn _mount(&mut self, surface: &B::Surface, node: Node) -> Result<(), Error<B>> {
         if let Err(err) = self.renderer.mount(surface, &node).await {
             return Err(Error::RendererError(err))
         }
-        self.nodes.insert(sid, node);
-
-         */
+        self.nodes.insert(surface.id(), node);
         Ok(())
+    }
+
+    pub fn mount(&mut self, surface: &B::Surface, node: Node) -> Result<(), Error<B>>{
+        pollster::block_on(self._mount(surface, node))
     }
 
     pub(crate) fn create_surface(&self, attributes: SurfaceAttributes) -> Result<B::Surface, <B::SurfaceFactory as SurfaceFactory>::Error> {
@@ -75,7 +67,7 @@ impl<B> Instance<B> where
                 self.main_thread_sender.as_ref().unwrap().send(MainThreadRequest::CreateSurface {
                     attributes,
                     sender
-                });
+                }).unwrap();
                 r.recv().unwrap()
             }
             // In this case the instance is not started up yet.
@@ -102,10 +94,19 @@ impl<B> Instance<B> where
         }
     }
 
-    async fn handle_mt(&self, event: Event<B::UserEvent>) {
+    async fn handle_mt(&mut self, event: Event<B::UserEvent>) {
         match event {
             Event::UserEvent(event) => {
 
+            }
+            Event::SurfaceEvent { id, event } => match event {
+                SurfaceEvent::Resized(extent) => {
+                    self.renderer.resize( id, extent).await.unwrap();
+                    self.renderer.render(id).unwrap();
+                }
+                SurfaceEvent::Redraw => {
+                    self.renderer.render(id).unwrap();
+                }
             }
         }
     }
@@ -125,13 +126,12 @@ impl<B> Instance<B> where
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
-            .expect("Failed create asynchronous runtime!");
-
+            .expect("Failed to create async runtime!");
 
         let (main_thread_sender, mut main_thread_receiver) = mpsc::channel();
         self.main_thread_sender = Some(main_thread_sender);
 
-        let this = Arc::new(self);
+        let this = Arc::new(Mutex::new(self));
         main_thread_event_loop.run(move |event, event_loop_target| {
             let this = this.clone();
 
@@ -141,7 +141,8 @@ impl<B> Instance<B> where
 
             // Handle event on the multithreaded async runtime
             runtime.spawn(async move {
-                this.handle_mt(event).await;
+                let mut guard = this.lock().await;
+                guard.handle_mt(event).await;
             });
         });
         loop {}

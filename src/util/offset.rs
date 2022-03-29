@@ -1,4 +1,5 @@
+#[derive(Clone, Debug)]
 pub struct Offset {
-    pub x: isize,
-    pub y: isize
+    pub x: i32,
+    pub y: i32
 }

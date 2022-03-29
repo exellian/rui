@@ -7,13 +7,20 @@ pub enum RendererError {
 
 impl Debug for RendererError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        match self {
+            RendererError::AdapterNotFound => {
+                write!(f, "Adapter not found!")
+            }
+            RendererError::DeviceCreationFailed(err) => {
+                Debug::fmt(err, f)
+            }
+        }
     }
 }
 
 impl Display for RendererError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        Debug::fmt(self, f)
     }
 }
 

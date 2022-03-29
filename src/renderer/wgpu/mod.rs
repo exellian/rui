@@ -1,5 +1,6 @@
 mod renderer;
 mod renderer_error;
-mod renderer_job;
+mod pipeline;
+mod primitive;
 
 pub use renderer::Renderer;

@@ -1,4 +1,5 @@
 extern crate core;
+extern crate alloc;
 
 pub mod node;
 pub mod util;
@@ -10,20 +11,12 @@ pub mod event;
 pub mod component;
 
 use crate::component::Component;
-use crate::instance::{Backend, Instance};
+use crate::instance::{Backend};
 use crate::node::Node;
 use async_trait::async_trait;
 use crate::component::context::Context;
 
-struct Root;
 
-#[async_trait]
-impl Component for Root {
-
-    async fn node<B>(&mut self, context: &mut Context<B>) -> Node where Self: Sized, B: Backend {
-        todo!()
-    }
-}
 
 /*
 impl State for Mybutton {

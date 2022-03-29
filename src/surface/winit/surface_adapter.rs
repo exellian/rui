@@ -1,36 +1,39 @@
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::sync::atomic::{AtomicU64, Ordering};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use winit::window::WindowId;
+use crate::surface::SurfaceId;
 use crate::util::Extent;
 
-pub struct SurfaceAdapter(u64, winit::window::Window);
+pub struct SurfaceAdapter(winit::window::Window);
 impl SurfaceAdapter {
     pub fn new(window: winit::window::Window) -> Self {
-        // Ids for hashing:
-        // Every window instance should have an unique id
-        // to be able to be hashed (see: impl Hash for SurfaceAdapter)
-        static IDS: AtomicU64 = AtomicU64::new(0);
-        let id = IDS.fetch_add(1, Ordering::Acquire);
-        SurfaceAdapter(id, window)
+        SurfaceAdapter(window)
     }
 }
 impl crate::surface::SurfaceAdapter for SurfaceAdapter {
 
     fn inner_size(&self) -> Extent {
-        let size = self.1.inner_size();
+        let size = self.0.inner_size();
         Extent {
             width: size.width,
             height: size.height
         }
     }
+
+    fn id(&self) -> SurfaceId {
+        self.0.id().into()
+    }
 }
-impl Hash for SurfaceAdapter {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state)
+impl From<WindowId> for SurfaceId {
+    fn from(id: WindowId) -> Self {
+        let mut hasher = DefaultHasher::new();
+        id.hash(&mut hasher);
+        SurfaceId::from(hasher.finish())
     }
 }
 unsafe impl HasRawWindowHandle for SurfaceAdapter {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        self.1.raw_window_handle()
+        self.0.raw_window_handle()
     }
 }

@@ -3,10 +3,14 @@ use std::fmt::Debug;
 use crate::node::Node;
 use async_trait::async_trait;
 use crate::Backend;
+use crate::surface::SurfaceId;
+use crate::util::Extent;
 
 #[async_trait]
 pub trait Renderer<B> where B: Backend {
     type Error: Error + Debug;
 
     async fn mount(&mut self, surface: &B::Surface, node: &Node) -> Result<(), Self::Error>;
+    async fn resize(&mut self, surface_id: SurfaceId, size: Extent) -> Result<(), Self::Error>;
+    fn render(&self, surface_id: SurfaceId) -> Result<(), Self::Error>;
 }

@@ -16,8 +16,9 @@ pub fn component<T>(component: T) -> Node where T: 'static + Component {
     Node::Component(BaseNode::default(), Box::new(component))
 }
 
-pub fn rect<C>(color: C) -> Node where C: Into<Color> {
+pub fn rect<C>(color: C, radii: [f32;4]) -> Node where C: Into<Color> {
     let mut base = BaseNode::default();
     base.background = color.into();
+    base.border_radii = radii;
     Node::Rectangle(base)
 }

@@ -4,6 +4,7 @@ pub struct BaseNode {
     pub(crate) flags: Flags,
     pub(crate) bounding_rect: Rect,
     pub(crate) background: Color,
+    pub(crate) border_radii: [f32;4]
 }
 
 impl Default for BaseNode {
@@ -20,7 +21,8 @@ impl Default for BaseNode {
                     height: 0
                 }
             },
-            background: Color::BLACK
+            background: Color::BLACK,
+            border_radii: [0.0, 0.0, 0.0, 0.0]
         }
     }
 }

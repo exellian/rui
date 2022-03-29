@@ -17,7 +17,7 @@ impl Component for Root {
     }
 
     async fn node(&self) -> Node {
-        rect([234, 22, 0])
+        rect([22, 234, 0], [0.05, 0.05, 0.05,  0.1])
     }
 }
 

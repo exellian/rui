@@ -56,7 +56,8 @@ impl RenderJob {
                 let r = Self::rect(parent, base);
                 rects.push(rect_pipeline::Instance {
                     rect: Self::rect(parent, base).norm(root),
-                    color: base.background.as_raw()
+                    color: base.background.as_raw(),
+                    radii: base.border_radii
                 })
             },
             Node::Border(base, b) => {
@@ -94,9 +95,10 @@ impl RenderJob {
         self.image_pipeline.record(render_pass);
     }
 
-    pub(crate) fn resize(&mut self, device: &wgpu::Device, size: Extent) {
+    pub(crate) fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, size: Extent) {
         self.config.width = size.width.max(1);
         self.config.height = size.height.max(1);
+        self.rect_pipeline.resize(queue, &self.config);
         self.surface.configure(device, &self.config);
     }
 }

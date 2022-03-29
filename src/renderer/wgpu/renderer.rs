@@ -128,7 +128,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
     async fn resize(&mut self, surface_id: SurfaceId, size: Extent) -> Result<(), Self::Error> {
         let c = self.jobs.get_mut(&surface_id).unwrap();
         let base = self.base.as_mut().unwrap();
-        c.resize(&base.device, size);
+        c.resize(&base.device, &base.queue, size);
         Ok(())
     }
 

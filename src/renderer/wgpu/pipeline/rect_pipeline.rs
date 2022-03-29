@@ -5,9 +5,16 @@ use crate::renderer::wgpu::primitive;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct Globals {
+    pub(crate) aspect_ratio: f32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct Instance {
     pub(crate) rect: [f32;4],
-    pub(crate) color: [f32;4]
+    pub(crate) color: [f32;4],
+    pub(crate) radii: [f32;4]
 }
 impl Instance {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
@@ -26,6 +33,11 @@ impl Instance {
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x4,
                 },
+                wgpu::VertexAttribute {
+                    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
             ],
         }
     }
@@ -33,12 +45,51 @@ impl Instance {
 
 pub struct RectPipeline {
     pipeline: wgpu::RenderPipeline,
+    globals_buffer: wgpu::Buffer,
+    globals_bind_group: wgpu::BindGroup,
     instance_count: usize,
     instance_buffer: Option<wgpu::Buffer>
 }
 impl RectPipeline {
 
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+
+        let globals = Globals {
+            aspect_ratio: config.width as f32 / config.height as f32
+        };
+
+        let globals_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("globals_buffer"),
+            contents: bytemuck::cast_slice(&[globals]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+        });
+
+        let globals_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("globals_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None
+                    },
+                    count: None
+                }
+            ]
+        });
+
+        let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &globals_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: globals_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("camera_bind_group"),
+        });
 
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: None,
@@ -47,7 +98,7 @@ impl RectPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&globals_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -75,9 +126,18 @@ impl RectPipeline {
 
         RectPipeline {
             pipeline,
+            globals_buffer,
+            globals_bind_group,
             instance_count: 0,
             instance_buffer: None
         }
+    }
+
+    pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
+        let globals = Globals {
+            aspect_ratio: config.width as f32 / config.height as f32
+        };
+        queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
     }
 
     pub fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -85,6 +145,7 @@ impl RectPipeline {
             // If instance_count > 0 then the instance buffer must exist
             debug_assert!(self.instance_buffer.is_some());
             render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_bind_group(0, &self.globals_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.instance_buffer.as_ref().unwrap().slice(..));
             render_pass.draw(0..6, 0..self.instance_count as _);
         }

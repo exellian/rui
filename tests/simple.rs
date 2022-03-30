@@ -5,7 +5,7 @@ use rui::surface::Surface;
 use rui::util::Extent;
 use async_trait::async_trait;
 use rui::component::context::Context;
-use rui::node::{Node, rect, component};
+use rui::node::{Node, rect, component, image};
 
 struct Root;
 
@@ -16,12 +16,14 @@ impl Component for Root {
         todo!()
     }
 
-    async fn node(&self) -> Node {
-        rect([22, 234, 0], [0.05, 0.05, 0.05,  0.1])
+    async fn node(&mut self) -> Node {
+        image("test.jpeg", [0.05, 0.05, 0.05,  0.1])
+        //rect([22, 234, 0], [0.05, 0.05, 0.05,  0.1])
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut instance = Instance::default();
 
     let surface = Surface::builder()
@@ -34,6 +36,5 @@ fn main() {
         .expect("Failed to create window!");
     let root = component(Root);
     instance.mount(&surface, root).expect("Failed to mount root component!");
-
     instance.run()
 }

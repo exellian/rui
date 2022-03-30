@@ -3,46 +3,6 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu_types::BufferUsages;
 use crate::renderer::wgpu::primitive;
 
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Globals {
-    pub(crate) aspect_ratio: f32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct Instance {
-    pub(crate) rect: [f32;4],
-    pub(crate) color: [f32;4],
-    pub(crate) radii: [f32;4]
-}
-impl Instance {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        use std::mem;
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Instance>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x4,
-                },
-            ],
-        }
-    }
-}
-
 pub struct RectPipeline {
     pipeline: wgpu::RenderPipeline,
     globals_buffer: wgpu::Buffer,
@@ -54,7 +14,7 @@ impl RectPipeline {
 
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
 
-        let globals = Globals {
+        let globals = primitive::Globals {
             aspect_ratio: config.width as f32 / config.height as f32
         };
 
@@ -88,7 +48,7 @@ impl RectPipeline {
                     resource: globals_buffer.as_entire_binding(),
                 }
             ],
-            label: Some("camera_bind_group"),
+            label: Some("globals_bind_group"),
         });
 
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
@@ -108,7 +68,7 @@ impl RectPipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Instance::desc()],
+                buffers: &[primitive::Instance::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -134,7 +94,7 @@ impl RectPipeline {
     }
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
-        let globals = Globals {
+        let globals = primitive::Globals {
             aspect_ratio: config.width as f32 / config.height as f32
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));

@@ -12,5 +12,5 @@ pub trait Component: Sync + Send {
     async fn on_event<B>(&mut self, ctx: &mut Context<B>)
         where Self: Sized, B: Backend;
 
-    async fn node(&self) -> Node;
+    async fn node(&mut self) -> Node;
 }

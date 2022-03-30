@@ -24,4 +24,8 @@ impl BorderNode {
     pub fn node(&self) -> &Node {
         &self.node
     }
+
+    pub fn node_mut(&mut self) -> &mut Node {
+        &mut self.node
+    }
 }

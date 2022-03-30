@@ -76,7 +76,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
     type Error = RendererError;
 
     //TODO split up in parts and functions that make sense
-    async fn mount(&mut self, surface: &B::Surface, node: &Node) -> Result<(), Self::Error> {
+    async fn mount(&mut self, surface: &B::Surface, node: &mut Node) -> Result<(), Self::Error> {
         let sid = surface.id();
         let (job, base) = match self.jobs.get_mut(&sid) {
             None => {
@@ -121,7 +121,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
             Some(sh) => (sh, self.base.as_ref().unwrap())
         };
         //Creation of rendering objects
-        job.mount(&base.device, node).await;
+        job.mount(&base.device, &base.queue, node).await;
         Ok(())
     }
 

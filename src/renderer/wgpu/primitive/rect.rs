@@ -1,3 +1,3 @@
-use crate::renderer::wgpu::pipeline::rect_pipeline;
+use crate::renderer::wgpu::primitive;
 
-pub(crate) type Rect = rect_pipeline::Instance;
+pub(crate) type Rect = primitive::Instance;

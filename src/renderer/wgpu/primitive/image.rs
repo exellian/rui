@@ -1,6 +1,7 @@
-use crate::renderer::wgpu::pipeline::image_pipeline;
+use crate::renderer::wgpu::primitive;
+use crate::util::Resource;
 
 pub struct Image {
-    pub(crate) instance: image_pipeline::Instance,
-    pub(crate) resource: String
+    pub(crate) instance: primitive::Instance,
+    pub(crate) resource: Resource
 }

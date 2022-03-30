@@ -44,8 +44,8 @@ impl<B> Instance<B> where
         }
     }
 
-    pub(crate) async fn _mount(&mut self, surface: &B::Surface, node: Node) -> Result<(), Error<B>> {
-        if let Err(err) = self.renderer.mount(surface, &node).await {
+    pub(crate) async fn _mount(&mut self, surface: &B::Surface, mut node: Node) -> Result<(), Error<B>> {
+        if let Err(err) = self.renderer.mount(surface, &mut node).await {
             return Err(Error::RendererError(err))
         }
         self.nodes.insert(surface.id(), node);

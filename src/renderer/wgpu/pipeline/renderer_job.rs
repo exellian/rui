@@ -1,10 +1,10 @@
 use crate::Node;
 use crate::node::base::BaseNode;
 use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
-use crate::renderer::wgpu::pipeline::{image_pipeline, rect_pipeline};
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
-use crate::util::{Extent, Flags, Offset, Rect};
+use crate::util::{Extent, Flags, Rect};
 use async_recursion::async_recursion;
+use crate::renderer::wgpu::primitive;
 
 pub struct RenderJob {
     pub(crate) config: wgpu::SurfaceConfiguration,
@@ -50,44 +50,50 @@ impl RenderJob {
     // Or event optimize node graph to completely get rid of it
 
     #[async_recursion]
-    async fn flatten(root: &Rect, parent: &Rect, node: &Node, rects: &mut Vec<rect_pipeline::Instance>, images: &mut Vec<image_pipeline::Instance>) {
+    async fn flatten(root: &Rect, parent: &Rect, node: &mut Node, rects: &mut Vec<primitive::Rect>, images: &mut Vec<primitive::Image>) {
         match node {
             Node::Rectangle(base) => {
-                let r = Self::rect(parent, base);
-                rects.push(rect_pipeline::Instance {
+                rects.push(primitive::Rect {
                     rect: Self::rect(parent, base).norm(root),
                     color: base.background.as_raw(),
                     radii: base.border_radii
                 })
             },
             Node::Border(base, b) => {
-                Self::flatten(root, parent, b.node(), rects, images).await;
+                Self::flatten(root, parent, b.node_mut(), rects, images).await;
             },
             Node::Composition(_, c) => {
-                for node in c.layers() {
+                for node in c.layers_mut() {
                     Self::flatten(root, parent, node, rects, images).await;
                 }
             },
-            Node::Image(_, i) => {
-                todo!()
+            Node::Image(base, i) => {
+                images.push(primitive::Image {
+                    instance: primitive::Instance {
+                        rect: Self::rect(parent, base).norm(root),
+                        color: base.background.as_raw(),
+                        radii: base.border_radii
+                    },
+                    resource: i.resource().clone()
+                })
             },
             Node::Text(_, t) => {
                 todo!()
             },
             Node::Component(_, c) => {
-                let node = c.node().await;
-                Self::flatten(root, parent, &node, rects, images).await;
+                let mut node = c.node().await;
+                Self::flatten(root, parent, &mut node, rects, images).await;
             }
         }
     }
 
-    pub(crate) async fn mount(&mut self, device: &wgpu::Device, node: &Node) {
+    pub(crate) async fn mount(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, node: &mut Node) {
         let mut rects = vec![];
         let mut images = vec![];
         let root = Rect::new(0, 0, self.config.width, self.config.height);
         Self::flatten(&root, &root, node, &mut rects, &mut images).await;
         self.rect_pipeline.mount(device, &rects);
-        //self.image_pipeline.mount(device, &images);
+        self.image_pipeline.mount(device, queue, &images).await;
     }
 
     pub(crate) fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -99,6 +105,7 @@ impl RenderJob {
         self.config.width = size.width.max(1);
         self.config.height = size.height.max(1);
         self.rect_pipeline.resize(queue, &self.config);
+        self.image_pipeline.resize(queue, &self.config);
         self.surface.configure(device, &self.config);
     }
 }

@@ -1,9 +1,17 @@
+use crate::util::Resource;
+
 pub struct ImageNode {
-    resource: String,
+    resource: Resource,
 }
 impl ImageNode {
 
-    pub fn resource(&self) -> &str {
+    pub fn new(resource: Resource) -> Self {
+        ImageNode {
+            resource
+        }
+    }
+
+    pub fn resource(&self) -> &Resource {
         &self.resource
     }
 }

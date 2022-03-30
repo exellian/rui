@@ -19,6 +19,11 @@ pollster = "0.2"
 bytemuck = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 
+[dependencies.image]
+version = "0.24"
+default-features = false
+features = ["png", "jpeg"]
+
 [[test]]
 name = "simple"
 path = "tests/simple.rs"

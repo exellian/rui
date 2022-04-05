@@ -7,6 +7,9 @@ mod handler;
 mod sender;
 mod id;
 mod resource;
+mod path;
+mod solver;
+mod point;
 
 pub use color::Color;
 pub use rect::Rect;
@@ -16,4 +19,5 @@ pub use handler::Handler;
 pub use sender::Sender;
 pub use extent::Extent;
 pub use resource::Resource;
+pub use path::PathSegment;
 pub use id::id;

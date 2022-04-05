@@ -26,8 +26,10 @@ impl RendererBase {
         let required_features = wgpu::Features::empty();
         let adapter_features = adapter.features();
         // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the surface.
-        let needed_limits = wgpu::Limits::downlevel_webgl2_defaults()
+        let mut needed_limits = wgpu::Limits::downlevel_webgl2_defaults()
             .using_resolution(adapter.limits());
+        needed_limits.max_storage_buffers_per_shader_stage = 4;
+        needed_limits.max_storage_buffer_binding_size = 128 << 20;
 
         let (device, queue) = match adapter
             .request_device(

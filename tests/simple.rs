@@ -5,7 +5,7 @@ use rui::surface::Surface;
 use rui::util::Extent;
 use async_trait::async_trait;
 use rui::component::context::Context;
-use rui::node::{Node, rect, component, image};
+use rui::node::{Node, rect, component, image, path, bezier};
 
 struct Root;
 
@@ -17,7 +17,10 @@ impl Component for Root {
     }
 
     async fn node(&mut self) -> Node {
-        image("test.jpeg", [0.05, 0.05, 0.05,  0.1])
+        path([22, 234, 0], [
+            bezier([0.0, 0.0], [1.0, 1.0], [0.3, 0.8], [0.8, 0.2])
+        ])
+        //image("test.jpeg", [0.05, 0.05, 0.05,  0.1])
         //rect([22, 234, 0], [0.05, 0.05, 0.05,  0.1])
     }
 }
@@ -29,7 +32,7 @@ async fn main() {
     let surface = Surface::builder()
         .title("Test")
         .size(Extent {
-            width: 1280,
+            width: 720,
             height: 720
         })
         .build(&instance)

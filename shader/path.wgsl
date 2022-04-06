@@ -201,6 +201,37 @@ fn solve_cubic_bezier(
     // Get the times of the curve where b(t) = x
     var t: vec3<f32> = solve_cubic(ax, bx, cx, dx, _0_sol, _1_sol, _2_sol);
     var tmp: f32 = 0.0;
+
+    // If the intersection point is not in between start and end range
+    // throw it away
+    if (*_0_sol && (t.x < 0.0 || t.x > 1.0)) {
+        *_0_sol = false;
+        t.x = 0.0;
+    }
+    if (*_1_sol && (t.y < 0.0 || t.y > 1.0)) {
+        *_1_sol = false;
+        t.y = 0.0;
+    }
+    if (*_2_sol && (t.z < 0.0 || t.z > 1.0)) {
+        *_2_sol = false;
+        t.z = 0.0;
+    }
+    //pack solutions
+    if (!*_0_sol) {
+        *_0_sol = *_1_sol;
+        *_1_sol = *_2_sol;
+        *_2_sol = false;
+        t.x = t.y;
+        t.y = t.z;
+        t.z = 0.0;
+    }
+    if (!*_1_sol) {
+        *_1_sol = *_2_sol;
+        *_2_sol = false;
+        t.y = t.z;
+        t.z = 0.0;
+    }
+
     if (*_0_sol) {
         t.x = cubic(t.x, ay, by, cy, dy);
     }
@@ -257,6 +288,7 @@ fn check_uncolored_inv(pos: vec2<f32>, solution_count: u32, solution: vec3<f32>)
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
     var colored: bool = true;
+    var intersection: bool = false;
     for (var i: u32 = in.segment_range.x; i < in.segment_range.y && colored; i = i + 1u) {
         let segment: PathSegment = all_paths.segments[i];
         var _1: bool = false;
@@ -275,12 +307,15 @@ fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
         );
         if (_1) {
             solution_count = solution_count + 1u;
+            intersection = true;
         }
         if (_2) {
             solution_count = solution_count + 1u;
+            intersection = true;
         }
         if (_3) {
             solution_count = solution_count + 1u;
+            intersection = true;
         }
         if (solution_count == 0u) {
             continue;
@@ -288,36 +323,30 @@ fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
         var inv: bool = false;
         // left_bot -> right_top
         if (segment.param0.x <= segment.param3.x && segment.param3.y <= segment.param3.y) {
-            if (in.norm_position.x < segment.param0.x) {
-                inv = true;
-            }
+
         }
         // left_top -> right_bot
-        else if (segment.param0.x <= segment.param3.x && segment.param3.y > segment.param3.y) {
-            if (in.norm_position.x < segment.param0.x) {
-                inv = true;
-            }
+        if (segment.param0.x <= segment.param3.x && segment.param3.y > segment.param3.y) {
+            return vec4<f32>(1.0);
         }
         // right_bot -> left_top
-        else if (segment.param0.x > segment.param3.x && segment.param3.y <= segment.param3.y) {
-            if (in.norm_position.x > segment.param0.x) {
-                inv = true;
-            }
+        if (segment.param0.x >= segment.param3.x && segment.param3.y <= segment.param3.y) {
+            inv = true;
         }
         // right_top -> left_bot
-        else if (segment.param0.x > segment.param3.x && segment.param3.y > segment.param3.y) {
-            if (in.norm_position.x > segment.param0.x) {
-                inv = true;
-            }
+        if (segment.param0.x >= segment.param3.x && segment.param3.y >= segment.param3.y) {
+            inv = true;
         }
         if (!inv && check_uncolored(in.norm_position, solution_count, res)) {
             colored = false;
+            break;
         }
         if (inv && check_uncolored_inv(in.norm_position, solution_count, res)) {
             colored = false;
+            break;
         }
     }
-    if (colored) {
+    if (colored && intersection) {
         return in.color;
     }
     return vec4<f32>(0.0);

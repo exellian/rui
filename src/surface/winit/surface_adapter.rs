@@ -24,6 +24,10 @@ impl crate::surface::SurfaceAdapter for SurfaceAdapter {
     fn id(&self) -> SurfaceId {
         self.0.id().into()
     }
+
+    fn request_redraw(&self) {
+        self.0.request_redraw();
+    }
 }
 impl From<WindowId> for SurfaceId {
     fn from(id: WindowId) -> Self {

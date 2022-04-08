@@ -1,4 +1,6 @@
-use crate::Node;
+use std::sync::Arc;
+use std::time::Instant;
+use crate::{Backend, Node};
 use crate::node::base::BaseNode;
 use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
@@ -7,20 +9,22 @@ use async_recursion::async_recursion;
 use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
 use crate::renderer::wgpu::primitive;
 
-pub struct RenderJob {
+pub struct RenderJob<B> where B: Backend {
     pub(crate) config: wgpu::SurfaceConfiguration,
+    pub(crate) surface_adapter: Arc<B::Surface>,
     pub(crate) surface: wgpu::Surface,
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
     pub(crate) path_pipeline: PathPipeline
 }
-impl RenderJob {
-    pub(crate) fn new(device: &wgpu::Device, config: wgpu::SurfaceConfiguration, surface: wgpu::Surface) -> Self {
+impl<B> RenderJob<B> where B: Backend {
+    pub(crate) fn new(device: &wgpu::Device, config: wgpu::SurfaceConfiguration, surface_adapter: Arc<B::Surface>, surface: wgpu::Surface) -> Self {
         let rect_pipeline = RectPipeline::new(device, &config);
         let image_pipeline = ImagePipeline::new(device, &config);
         let path_pipeline = PathPipeline::new(device, &config);
         RenderJob {
             config,
+            surface_adapter,
             surface,
             rect_pipeline,
             image_pipeline,

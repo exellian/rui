@@ -44,16 +44,16 @@ impl<B> Instance<B> where
         }
     }
 
-    pub(crate) async fn _mount(&mut self, surface: &B::Surface, mut node: Node) -> Result<(), Error<B>> {
-        if let Err(err) = self.renderer.mount(surface, &mut node).await {
+    pub(crate) async fn _mount(&mut self, surface: Arc<B::Surface>, mut node: Node) -> Result<(), Error<B>> {
+        if let Err(err) = self.renderer.mount(surface.clone(), &mut node).await {
             return Err(Error::RendererError(err))
         }
         self.nodes.insert(surface.id(), node);
         Ok(())
     }
 
-    pub fn mount(&mut self, surface: &B::Surface, node: Node) -> Result<(), Error<B>>{
-        pollster::block_on(self._mount(surface, node))
+    pub fn mount(&mut self, surface: impl Into<Arc<B::Surface>>, node: Node) -> Result<(), Error<B>>{
+        pollster::block_on(self._mount(surface.into(), node))
     }
 
     pub(crate) fn create_surface(&self, attributes: SurfaceAttributes) -> Result<B::Surface, <B::SurfaceFactory as SurfaceFactory>::Error> {
@@ -102,11 +102,14 @@ impl<B> Instance<B> where
             Event::SurfaceEvent { id, event } => match event {
                 SurfaceEvent::Resized(extent) => {
                     self.renderer.resize( id, extent).await.unwrap();
-                    self.renderer.render(id).unwrap();
+                    //self.renderer.render(id).unwrap();
                 }
                 SurfaceEvent::Redraw => {
                     self.renderer.render(id).unwrap();
                 }
+            }
+            Event::EventsCleared => {
+                self.renderer.request_render();
             }
         }
     }

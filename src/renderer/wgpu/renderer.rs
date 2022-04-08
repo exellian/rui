@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Instant;
 use raw_window_handle::HasRawWindowHandle;
 use crate::node::Node;
@@ -53,11 +54,11 @@ impl RendererBase {
         })
     }
 }
-pub struct Renderer {
+pub struct Renderer<B> where B: Backend {
     base: Option<RendererBase>,
-    jobs: HashMap<SurfaceId, RenderJob>
+    jobs: HashMap<SurfaceId, RenderJob<B>>
 }
-impl Renderer {
+impl<B> Renderer<B> where B: Backend {
     fn new() -> Self {
         Renderer {
             base: None,
@@ -65,21 +66,21 @@ impl Renderer {
         }
     }
 }
-impl Default for Renderer {
+impl<B> Default for Renderer<B> where B: Backend {
     fn default() -> Self {
         Renderer::new()
     }
 }
 
 #[async_trait]
-impl<B> crate::renderer::Renderer<B> for Renderer where
+impl<B> crate::renderer::Renderer<B> for Renderer<B> where
     B: Backend,
     B::Surface: HasRawWindowHandle,
 {
     type Error = RendererError;
 
     //TODO split up in parts and functions that make sense
-    async fn mount(&mut self, surface: &B::Surface, node: &mut Node) -> Result<(), Self::Error> {
+    async fn mount(&mut self, surface: Arc<B::Surface>, node: &mut Node) -> Result<(), Self::Error> {
         let sid = surface.id();
         let (job, base) = match self.jobs.get_mut(&sid) {
             None => {
@@ -87,7 +88,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
                 let surface_handle = match &mut self.base {
                     Some(base) => {
                         unsafe {
-                            base.instance.create_surface(surface)
+                            base.instance.create_surface(surface.as_ref())
                         }
                     },
                     rb@None => {
@@ -97,7 +98,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
                         // Creating a surface first before creating the base, so that
                         // the base can use it to find a suitable adapter (GPU)
                         let first_surface = unsafe {
-                            instance.create_surface(surface)
+                            instance.create_surface(surface.as_ref())
                         };
                         *rb = Some(RendererBase::new(backend_bits, instance, &first_surface).await?);
                         first_surface
@@ -117,6 +118,7 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
                 self.jobs.insert(sid, RenderJob::new(
                     &base.device,
                     config,
+                    surface,
                     surface_handle
                 ));
                 (self.jobs.get_mut(&sid).unwrap(), base)
@@ -129,13 +131,27 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
     }
 
     async fn resize(&mut self, surface_id: SurfaceId, size: Extent) -> Result<(), Self::Error> {
+        let start = Instant::now();
         let c = self.jobs.get_mut(&surface_id).unwrap();
         let base = self.base.as_mut().unwrap();
         c.resize(&base.device, &base.queue, size);
+
+        let elapsed = start.elapsed();
+        println!("resize time: {}ms", elapsed.as_micros() as f64 / 1000.0);
+
+
+        Ok(())
+    }
+
+    fn request_render(&self) -> Result<(), Self::Error> {
+        for (_, job) in &self.jobs {
+            job.surface_adapter.request_redraw();
+        }
         Ok(())
     }
 
     fn render(&self, surface_id: SurfaceId) -> Result<(), Self::Error> {
+
         let base = self.base.as_ref()
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface_id)

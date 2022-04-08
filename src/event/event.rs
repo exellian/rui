@@ -9,7 +9,8 @@ pub enum Event<T> {
     SurfaceEvent {
         id: SurfaceId,
         event: SurfaceEvent
-    }
+    },
+    EventsCleared
 }
 impl<F, T> Handler<Event<T>> for F where T: Debug, F: FnMut(Event<T>) {
     type Error = Infallible;

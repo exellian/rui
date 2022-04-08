@@ -11,5 +11,5 @@ impl<T> super::Backend for WGpu<T> where T: 'static + Sync + Send + Debug {
     type SurfaceFactory = crate::surface::winit::SurfaceFactory<T>;
     type EventLoopTarget = <Self::EventLoop as EventLoop<T>>::EventLoopTarget;
     type EventLoop = crate::event::winit::EventLoop<T>;
-    type Renderer = crate::renderer::wgpu::Renderer;
+    type Renderer = crate::renderer::wgpu::Renderer<Self>;
 }

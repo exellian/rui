@@ -12,7 +12,7 @@ pub trait Backend: Sync + Send + Sized {
 
     /// Surface type that should be used to create e.g: windows
     /// Default is the winit library
-    type Surface: SurfaceAdapter + Sync;
+    type Surface: SurfaceAdapter + Sync + Send;
 
     /// A factory for creating surfaces.
     /// This is needed because the user should use the surface::Surface struct

@@ -12,7 +12,7 @@ pub struct Context<B> where B: Backend {
 
 impl<B> Context<B> where B: Backend + 'static {
 
-    async fn mount(&mut self, surface: &B::Surface, node: Node) {
-        self.instance._mount(surface, node).await;
+    async fn mount(&mut self, surface: impl Into<Arc<B::Surface>>, node: Node) {
+        self.instance._mount(surface.into(), node).await;
     }
 }

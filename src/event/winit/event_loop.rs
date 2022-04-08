@@ -16,15 +16,16 @@ impl<T> super::super::EventLoop<T> for EventLoop<T> where T: Debug {
 
     fn run<F>(self, mut handler: F) where F: FnMut(Event<T>, &Self::EventLoopTarget) + 'static {
         self.0.run(move |winit_event, l, control_flow| {
+            let start = Instant::now();
             *control_flow = ControlFlow::Poll;
             let event = match winit_event.try_into() {
                 Ok(e) => e,
                 Err(_) => return
             };
-            let start = Instant::now();
             handler(event, l);
-            let elapsed = start.elapsed().as_nanos();
-            let fps = 1000000000.0 / elapsed as f64;
+
+            let elapsed = start.elapsed();
+            //println!("Frame time: {}ms | FPS: {}", elapsed.as_micros() as f64 / 1000.0, 1000000.0 / elapsed.as_micros() as f64);
 
         })
     }

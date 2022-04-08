@@ -51,6 +51,6 @@ async fn main() {
         .build(&instance)
         .expect("Failed to create window!");
     let root = component(Root);
-    instance.mount(&surface, root).expect("Failed to mount root component!");
+    instance.mount(surface, root).expect("Failed to mount root component!");
     instance.run()
 }

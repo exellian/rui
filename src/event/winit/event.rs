@@ -9,6 +9,9 @@ impl<'a, T> TryFrom<winit::event::Event<'a, T>> for Event<T> {
     fn try_from(value: winit::event::Event<'a, T>) -> Result<Self, Self::Error> {
         match value {
             winit::event::Event::UserEvent(v) => Ok(Event::UserEvent(v)),
+            winit::event::Event::RedrawEventsCleared => {
+                Ok(Event::EventsCleared)
+            },
             winit::event::Event::RedrawRequested(window_id) => {
                 Ok(Event::SurfaceEvent {
                     id: window_id.into(),

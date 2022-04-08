@@ -11,15 +11,15 @@ impl Surface {
         Surface(surface)
     }
 
-    pub fn builder() -> SurfaceBuilder {
+    pub fn builder<'a>() -> SurfaceBuilder<'a> {
         SurfaceBuilder::new()
     }
 }
 
-impl<'a> TryFrom<SurfaceAttributes<'a>> for Surface {
+impl<'a> TryFrom<&SurfaceAttributes<'a>> for Surface {
     type Error = OsError;
 
-    fn try_from(value: SurfaceAttributes<'a>) -> Result<Self, Self::Error> {
+    fn try_from(value: &SurfaceAttributes<'a>) -> Result<Self, Self::Error> {
         let surface = platform::Surface::try_from(value)?;
         Ok(Surface::new(surface))
     }

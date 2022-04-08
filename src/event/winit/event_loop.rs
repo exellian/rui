@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::time::Instant;
 use winit::event_loop::ControlFlow;
 use crate::event::event::Event;
 
@@ -15,12 +16,16 @@ impl<T> super::super::EventLoop<T> for EventLoop<T> where T: Debug {
 
     fn run<F>(self, mut handler: F) where F: FnMut(Event<T>, &Self::EventLoopTarget) + 'static {
         self.0.run(move |winit_event, l, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            *control_flow = ControlFlow::Poll;
             let event = match winit_event.try_into() {
                 Ok(e) => e,
                 Err(_) => return
             };
+            let start = Instant::now();
             handler(event, l);
+            let elapsed = start.elapsed().as_nanos();
+            let fps = 1000000000.0 / elapsed as f64;
+
         })
     }
 }

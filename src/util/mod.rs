@@ -20,4 +20,5 @@ pub use sender::Sender;
 pub use extent::Extent;
 pub use resource::Resource;
 pub use path::PathSegment;
+pub use point::Point2D;
 pub use id::id;

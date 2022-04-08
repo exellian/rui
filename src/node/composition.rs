@@ -4,7 +4,13 @@ pub struct CompositionNode {
     layers: Vec<Node>
 }
 impl CompositionNode {
-    
+
+    pub fn new(layers: Vec<Node>) -> Self {
+        CompositionNode {
+            layers
+        }
+    }
+
     pub fn layers(&self) -> &Vec<Node> {
         &self.layers
     }

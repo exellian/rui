@@ -8,6 +8,13 @@ pub struct PathSegment {
     pub param2: [f32; 2],
     pub param3: [f32; 2]
 }
+impl PathSegment {
+    pub const LINEAR: u32 = 0;
+    pub const ARC: u32 = 1;
+    pub const QUADRATIC_BEZIER: u32 = 2;
+    pub const CUBIC_BEZIER: u32 = 3;
+    //const CATMULL_ROM: u32 = 4;
+}
 #[repr(C, align(8))]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Paths {

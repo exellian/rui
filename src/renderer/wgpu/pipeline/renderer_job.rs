@@ -68,47 +68,41 @@ impl RenderJob {
             },
             Node::Path(base, p) => {
                 let mut segments = Vec::with_capacity(p.segments().len());
+                let mut from = p.from();
                 for s in p.segments() {
-                    segments.push(primitive::PathSegment {
-                        typ: 0,
-                        flags: 0,
-                        param0: match s {
-                            PathSegment::Linear => panic!(),
-                            PathSegment::Arc { .. } => panic!(),
-                            PathSegment::QuadraticBezier { .. } => panic!(),
-                            PathSegment::CubicBezier { start, .. } => {
-                                    *start as [f32;2]
+                    segments.push(match s {
+                        PathSegment::Linear { to } => {
+                            let start = *from;
+                            from = to;
+                            primitive::PathSegment {
+                                typ: primitive::PathSegment::LINEAR,
+                                flags: 0,
+                                param0: start,
+                                param1: *to,
+                                param2: [0.0, 0.0],
+                                param3: [0.0, 0.0]
                             }
-                            PathSegment::CatmullRom => panic!(),
-                        },
-                        param1: match s {
-                            PathSegment::Linear => panic!(),
-                            PathSegment::Arc { .. } => panic!(),
-                            PathSegment::QuadraticBezier { .. } => panic!(),
-                            PathSegment::CubicBezier { params, .. } => {
-                                params[0] as [f32;2]
-                            }
-                            PathSegment::CatmullRom => panic!(),
-                        },
-                        param2: match s {
-                            PathSegment::Linear => panic!(),
-                            PathSegment::Arc { .. } => panic!(),
-                            PathSegment::QuadraticBezier { .. } => panic!(),
-                            PathSegment::CubicBezier { params, .. } => {
-                                params[1] as [f32;2]
-                            }
-                            PathSegment::CatmullRom => panic!(),
-                        },
-                        param3: match s {
-                            PathSegment::Linear => panic!(),
-                            PathSegment::Arc { .. } => panic!(),
-                            PathSegment::QuadraticBezier { .. } => panic!(),
-                            PathSegment::CubicBezier { end, .. } => {
-                                *end as [f32;2]
-                            }
-                            PathSegment::CatmullRom => panic!(),
                         }
-                    })
+                        PathSegment::Arc { to, radii } => {
+                            panic!()
+                        }
+                        PathSegment::QuadraticBezier { to, param } => {
+                            panic!()
+                        }
+                        PathSegment::CubicBezier { to, params } => {
+                            let start = *from;
+                            from = to;
+                            primitive::PathSegment {
+                                typ: primitive::PathSegment::CUBIC_BEZIER,
+                                flags: 0,
+                                param0: start,
+                                param1: params[0],
+                                param2: params[1],
+                                param3: *to
+                            }
+                        }
+                        PathSegment::CatmullRom => panic!()
+                    });
                 }
                 paths.push(primitive::Path {
                     rect: Self::rect(parent, base).norm(root),

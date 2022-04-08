@@ -7,20 +7,21 @@ pub mod image;
 pub mod text;
 mod path;
 
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 pub use node::Node;
 use crate::Component;
 
 use crate::node::base::BaseNode;
+use crate::node::composition::CompositionNode;
 use crate::node::image::ImageNode;
 use crate::node::path::PathNode;
-use crate::util::{Color, PathSegment, Resource};
+use crate::util::{Color, Point2D, Resource};
 
 pub fn component<T>(component: T) -> Node where T: 'static + Component {
     Node::Component(BaseNode::default(), Box::new(component))
 }
 
-pub fn rect<C>(color: C, radii: [f32;4]) -> Node where C: Into<Color> {
+pub fn rect(color: impl Into<Color>, radii: [f32;4]) -> Node {
     let mut base = BaseNode::default();
     base.background = color.into();
     base.border_radii = radii;
@@ -33,16 +34,13 @@ pub fn image(image: impl AsRef<Path>, radii: [f32;4]) -> Node {
     Node::Image(base, ImageNode::new(Resource::Path(image.as_ref().to_path_buf())))
 }
 
-pub fn bezier(start: [f32;2], end: [f32;2], a: [f32;2], b: [f32;2]) -> PathSegment {
-    PathSegment::CubicBezier {
-        start,
-        end,
-        params: [a, b]
-    }
+pub fn comp(layers: impl Into<Vec<Node>>) -> Node {
+    let base = BaseNode::default();
+    Node::Composition(base, CompositionNode::new(layers.into()))
 }
 
-pub fn path<const N: usize, C>(color: C, segments: [PathSegment;N]) -> Node where C: Into<Color> {
+pub fn path(color: impl Into<Color>, from: impl Into<Point2D>) -> path::Builder {
     let mut base = BaseNode::default();
     base.background = color.into();
-    Node::Path(base, PathNode::new(Vec::from(segments)))
+    PathNode::builder(base, from)
 }

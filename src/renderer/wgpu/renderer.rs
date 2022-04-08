@@ -140,9 +140,15 @@ impl<B> crate::renderer::Renderer<B> for Renderer where
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface_id)
             .expect("Invalid surface id!");
-        let frame = job.surface
-            .get_current_texture()
-            .expect("Failed to acquire next swap chain texture");
+        let frame = match job.surface.get_current_texture() {
+            Ok(frame) => frame,
+            Err(_) => {
+                job.surface.configure(&base.device, &job.config);
+                job.surface
+                    .get_current_texture()
+                    .expect("Failed to acquire next surface texture!")
+            }
+        };
         let view = frame.texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 

@@ -18,6 +18,8 @@ impl Component for Root {
     async fn node(&mut self) -> Node {
         let mut paths = vec![];
 
+        let t: Taskl
+
         for _ in 0..200/8 {
             paths.push(path([22, 234, 0], [0.1, 0.1])
                 .cubic_bezier([0.9, 0.1], [0.2, 0.05], [0.8, 0.15])

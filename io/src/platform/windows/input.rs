@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::{mem, thread};
 use std::process::exit;
 use std::thread::{Thread, ThreadId};
-use async_std::channel;
 use windows_sys::Win32::Foundation::{BOOL, S_FALSE};
 use windows_sys::Win32::UI::WindowsAndMessaging::{GetMessageW, MSG};
 use crate::event::Event;

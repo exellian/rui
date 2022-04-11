@@ -11,7 +11,7 @@ target_os = "openbsd"
 #[path = "linux/mod.rs"]
 mod platform;
 #[cfg(target_os = "macos")]
-#[path = "windows/mod.rs"]
+#[path = "macos/mod.rs"]
 mod platform;
 #[cfg(target_os = "android")]
 #[path = "android/runtime"]

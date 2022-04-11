@@ -1,4 +1,3 @@
-use mio::{event, Interest, Registry, Token};
 use crate::os_error::OsError;
 use crate::platform;
 use crate::surface::surface_attributes::SurfaceAttributes;

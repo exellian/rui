@@ -49,7 +49,7 @@ fn main() {
     }
     loop {
         {
-            let mut guard = state.lock().unwrap();
+            let guard = state.lock().unwrap();
             //println!("{}", guard.n_message);
             if guard.n_message == ITER {
                 break;

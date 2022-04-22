@@ -1,4 +1,6 @@
 /io/target
 /io/Cargo.lock
+/util/target
+/util/Cargo.lock
 /target
 Cargo.lock

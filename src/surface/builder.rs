@@ -18,12 +18,12 @@ impl<'a> Builder<'a> {
 
     //TODO think about renaming to with_size and also for all the other functions
     pub fn size(mut self, extent: Extent) -> Self {
-        self.inner = self.inner.size(extent);
+        self.inner = self.inner.with_size(extent);
         self
     }
 
     pub fn title(mut self, title: impl Into<Cow<'a, str>>) -> Self {
-        self.inner = self.inner.title(title);
+        self.inner = self.inner.with_title(title);
         self
     }
 

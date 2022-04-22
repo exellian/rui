@@ -1,6 +1,11 @@
-use crate::surface::SurfaceEvent;
+use crate::surface::{SurfaceEvent, SurfaceId};
 
+#[derive(Clone)]
 pub enum Event {
-    SurfaceEvent(SurfaceEvent),
+    SurfaceEvent {
+        id: SurfaceId,
+        event: SurfaceEvent
+    },
+    EventsCleared,
     Default
 }

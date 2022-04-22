@@ -5,6 +5,7 @@ use rui::util::Extent;
 use async_trait::async_trait;
 use rui::component::context::Context;
 use rui::node::{Node, component, path, comp};
+use util::Extent;
 
 struct Root;
 

@@ -4,11 +4,12 @@ use std::time::Instant;
 use raw_window_handle::HasRawWindowHandle;
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
-use crate::surface::{SurfaceAdapter, SurfaceId};
+use crate::surface::Surface;
 use async_trait::async_trait;
+use io::surface::SurfaceId;
+use util::Extent;
 use crate::renderer::wgpu::renderer_error::RendererError;
 use crate::Backend;
-use crate::util::Extent;
 
 pub struct RendererBase {
     pub(crate) instance: wgpu::Instance,
@@ -74,13 +75,12 @@ impl<B> Default for Renderer<B> where B: Backend {
 
 #[async_trait]
 impl<B> crate::renderer::Renderer<B> for Renderer<B> where
-    B: Backend,
-    B::Surface: HasRawWindowHandle,
+    B: Backend
 {
     type Error = RendererError;
 
     //TODO split up in parts and functions that make sense
-    async fn mount(&mut self, surface: Arc<B::Surface>, node: &mut Node) -> Result<(), Self::Error> {
+    async fn mount(&mut self, surface: Arc<Surface>, node: &mut Node) -> Result<(), Self::Error> {
         let sid = surface.id();
         let (job, base) = match self.jobs.get_mut(&sid) {
             None => {
@@ -138,7 +138,6 @@ impl<B> crate::renderer::Renderer<B> for Renderer<B> where
 
         let elapsed = start.elapsed();
         println!("resize time: {}ms", elapsed.as_micros() as f64 / 1000.0);
-
 
         Ok(())
     }

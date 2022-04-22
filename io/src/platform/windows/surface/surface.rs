@@ -3,7 +3,6 @@ use windows_sys::Win32::Foundation::{HWND};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{CreateWindowExW, CS_HREDRAW, CS_VREDRAW, CW_USEDEFAULT, RegisterClassExW, WNDCLASSEXW};
 use crate::os_error::OsError;
-use crate::platform::platform::surface::util;
 use crate::surface::SurfaceAttributes;
 
 pub struct Surface {
@@ -71,8 +70,6 @@ impl Surface {
         class_name
     }
 }
-
-
 
 impl<'a> TryFrom<&SurfaceAttributes<'a>> for Surface {
     type Error = OsError;

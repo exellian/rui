@@ -10,7 +10,6 @@ impl<T> Receiver<T> {
     }
 
     pub fn try_recv(&self) -> Option<T> {
-        self.0.is_empty()
         self.0.pop()
     }
 }

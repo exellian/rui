@@ -1,11 +1,11 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
+use io::surface::SurfaceError;
 use crate::Backend;
 use crate::renderer::Renderer;
-use crate::surface::SurfaceFactory;
 
 pub enum Error<B> where B: Backend {
-    SurfaceError(<B::SurfaceFactory as SurfaceFactory>::Error),
+    SurfaceError(SurfaceError),
     RendererError(<B::Renderer as Renderer<B>>::Error)
 }
 impl<B> fmt::Debug for Error<B> where B: Backend {

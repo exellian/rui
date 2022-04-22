@@ -1,7 +1,7 @@
 use std::borrow::Cow;
+use std::fs::File;
+use std::io::Read;
 use image::load;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
 use wgpu::BindGroupLayout;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu_types::BufferUsages;
@@ -176,9 +176,9 @@ impl ImagePipeline {
     async fn load(resource: &Resource) -> Vec<u8> {
         match resource {
             Resource::Path(path) => {
-                let mut file = File::open(path).await.unwrap();
+                let mut file = File::open(path).unwrap();
                 let mut contents = vec![];
-                file.read_to_end(&mut contents).await.unwrap();
+                file.read_to_end(&mut contents).unwrap();
                 contents
             }
         }

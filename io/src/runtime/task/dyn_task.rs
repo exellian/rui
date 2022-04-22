@@ -4,10 +4,11 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use crate::runtime::task::task::{Status, Task};
+use crate::runtime::task::Status;
+use crate::runtime::task::task::{Task};
 
 pub struct VTable {
-    poll: fn(&mut DynTask) -> Status,
+    poll: unsafe fn(&DynTask) -> Status,
     poll_consume: fn(&DynTask, &mut dyn Any)
 }
 
@@ -40,12 +41,13 @@ impl DynTask {
         *out_mut = Some(task.poll_consume());
     }
 
-    pub fn poll(&mut self) -> Status {
+    // The polling thread must ensure &mut self
+    pub unsafe fn poll(&self) -> Status {
         (self.vtable.poll)(self)
     }
 
-    fn _poll<F>(&mut self) -> Status where F: Future + 'static {
-        let task: &mut Task<F> = self.task.downcast_mut().unwrap();
+    unsafe fn _poll<F>(&self) -> Status where F: Future + 'static {
+        let task: &Task<F> = self.task.downcast_ref().unwrap();
         task.poll()
     }
 }

@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex};
-use tokio::sync::RwLock;
 use crate::instance::{Backend, Instance};
 use crate::Node;
 use crate::node::base::BaseNode;
-use crate::renderer::Renderer;
+use crate::surface::Surface;
 
 pub struct Context<B> where B: Backend {
     base: BaseNode,
@@ -12,7 +11,7 @@ pub struct Context<B> where B: Backend {
 
 impl<B> Context<B> where B: Backend + 'static {
 
-    async fn mount(&mut self, surface: impl Into<Arc<B::Surface>>, node: Node) {
+    async fn mount(&mut self, surface: impl Into<Arc<Surface>>, node: Node) {
         self.instance._mount(surface.into(), node).await;
     }
 }

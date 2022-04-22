@@ -1,17 +1,37 @@
-mod surface;
-mod surface_event;
-pub(crate) mod winit;
-mod surface_option;
 mod builder;
-mod surface_factory;
-mod surface_adapter;
-mod surface_attributes;
-mod surface_id;
 
-pub use surface::Surface;
-pub use surface_event::SurfaceEvent;
-pub use surface_option::SurfaceOption;
-pub use surface_factory::SurfaceFactory;
-pub use surface_adapter::SurfaceAdapter;
-pub use surface_attributes::SurfaceAttributes;
-pub use surface_id::SurfaceId;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+pub use builder::Builder as SurfaceBuilder;
+use io::surface::SurfaceId;
+use util::Extent;
+
+pub struct Surface(io::surface::Surface);
+
+impl Surface {
+
+    pub fn new(surface: io::surface::Surface) -> Self {
+        Surface(surface)
+    }
+
+    pub fn builder<'a>() -> SurfaceBuilder<'a> {
+        SurfaceBuilder::new()
+    }
+
+    pub fn inner_size(&self) -> Extent {
+        self.0.inner_size()
+    }
+
+    pub fn id(&self) -> SurfaceId {
+        self.0.id()
+    }
+
+    pub fn request_redraw(&self) {
+        self.0.request_redraw()
+    }
+}
+
+unsafe impl HasRawWindowHandle for Surface {
+    fn raw_window_handle(&self) -> RawWindowHandle {
+        self.0.raw_window_handle()
+    }
+}

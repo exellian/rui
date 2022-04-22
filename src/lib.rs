@@ -7,7 +7,6 @@ pub mod math;
 pub mod renderer;
 pub mod surface;
 pub mod instance;
-pub mod event;
 pub mod component;
 
 use crate::component::Component;

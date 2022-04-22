@@ -1,13 +1,13 @@
-use crate::alloc::spmc::Sender;
+use crate::alloc::mpmc::Sender;
 use crate::event::Event;
 
-pub struct ThreadQueue {
+pub struct ThreadEventQueue {
 
 }
 
-impl ThreadQueue {
+impl ThreadEventQueue {
     fn new() -> Self {
-        ThreadQueue {}
+        ThreadEventQueue {}
     }
 
     pub fn wait(&mut self, sender: &mut Sender<Event>) {
@@ -19,8 +19,8 @@ impl ThreadQueue {
     }
 }
 
-impl Default for ThreadQueue {
+impl Default for ThreadEventQueue {
     fn default() -> Self {
-        ThreadQueue::new()
+        ThreadEventQueue::new()
     }
 }

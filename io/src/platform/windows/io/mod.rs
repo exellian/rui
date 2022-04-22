@@ -1,5 +1,5 @@
 mod io;
-mod thread_queue;
+mod thread_event_queue;
 
 pub use io::IO;
-pub use thread_queue::ThreadQueue;
+pub use thread_event_queue::ThreadEventQueue;

@@ -1,4 +1,5 @@
-use crate::util::{Color, Extent, Flags, Offset, Rect};
+use util::{Extent, Offset};
+use crate::util::{Color, Flags, Rect};
 
 pub struct BaseNode {
     pub(crate) flags: Flags,

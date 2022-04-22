@@ -24,28 +24,30 @@ impl<T> ConcurrentQueue<T> {
     }
 
     pub fn try_pop(&self) -> Option<T> {
-        let head = self.head.load(Ordering::Acquire);
-        // Don't overtake the tail position
-        if head == self.tail.load(Ordering::Acquire) {
-            None
-        } else {
-            // Optimistically read the value.
-            // Maybe this value is already uninit
-            // because it got taken by another thread
-            let res = unsafe { self.buffer[head % self.buffer.len()].get().read() };
-            let new_head = head.wrapping_add(1);
+        loop {
+            let head = self.head.load(Ordering::Acquire);
+            // Don't overtake the tail position
+            if head == self.tail.load(Ordering::Acquire) {
+                return None
+            } else {
+                // Optimistically read the value.
+                // Maybe this value is already uninit
+                // because it got taken by another thread
+                let res = unsafe { self.buffer[head % self.buffer.len()].get().read() };
+                let new_head = head.wrapping_add(1);
 
-            match self.head.compare_exchange_weak(head, new_head, Ordering::Release, Ordering::Relaxed) {
-                // In this case no other thread took the value and therefore we can return it.
-                // We still have to make the read operation of this value before the compare and exchange
-                // because even if no other stealer thread got the value, the value could get overwritten
-                // by the producer thread in the meantime
-                Ok(_) => Some(unsafe {
-                    res.assume_init()
-                }),
-                // In this case either the exchange function failed or the value did get taken by a different thread
-                // because the head value was not the same anymore
-                Err(_) => None
+                match self.head.compare_exchange_weak(head, new_head, Ordering::Release, Ordering::Relaxed) {
+                    // In this case no other thread took the value and therefore we can return it.
+                    // We still have to make the read operation of this value before the compare and exchange
+                    // because even if no other stealer thread got the value, the value could get overwritten
+                    // by the producer thread in the meantime
+                    Ok(_) => return Some(unsafe {
+                        res.assume_init()
+                    }),
+                    // In this case either the exchange function failed or the value did get taken by a different thread
+                    // because the head value was not the same anymore
+                    Err(_) => {}
+                }
             }
         }
     }

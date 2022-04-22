@@ -1,10 +1,10 @@
 use std::hash::Hash;
 
 #[derive(Hash, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct SurfaceId(u64);
+pub struct Id(u64);
 
-impl From<u64> for SurfaceId {
+impl From<u64> for Id {
     fn from(id: u64) -> Self {
-        SurfaceId(id)
+        Id(id)
     }
 }

@@ -8,8 +8,10 @@
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/io/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/io/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/util/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/io/target" />
+      <excludeFolder url="file://$MODULE_DIR$/util/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

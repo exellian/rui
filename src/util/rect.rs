@@ -1,6 +1,5 @@
 use std::cmp::{max, min};
-use crate::util::extent::Extent;
-use crate::util::offset::Offset;
+use util::{Extent, Offset};
 
 #[derive(Debug)]
 pub struct Rect {

@@ -46,7 +46,8 @@ impl<F> Task<F> where F: Future {
         }
     }
 
-    pub fn poll(&mut self) -> Status {
+    pub unsafe fn poll(&self) -> Status {
+
         Status::Ready
     }
 

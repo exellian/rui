@@ -1,6 +1,8 @@
-/io/target
-/io/Cargo.lock
-/util/target
-/util/Cargo.lock
+/rui-io/target
+/rui-io/Cargo.lock
+/rui-util/target
+/rui-util/Cargo.lock
+/rui-macros/target
+/rui-macros/Cargo.lock
 /target
 Cargo.lock

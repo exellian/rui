@@ -1,37 +1,8 @@
-cargo-features = ["edition2021"]
-
-[package]
-name = "rui"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-url = "2"
-raw-window-handle = "0.4"
-wgpu = "0.12"
-wgpu-types = "0.12"
-async-trait = "0.1"
-async-recursion = "1"
-pollster = "0.2"
-bytemuck = { version = "1", features = ["derive"] }
-glyph_brush = "0.7.3"
-num = "0.4"
-io = { path = "./io" }
-util = { path = "./util" }
-
-[dependencies.image]
-version = "0.24"
-default-features = false
-features = ["png", "jpeg"]
-
-[[test]]
-name = "simple"
-path = "tests/simple.rs"
-harness = false
-
-[[test]]
-name = "font"
-path = "tests/ttf_test.rs"
-harness = false
+[workspace]
+resolver = "2"
+members = [
+    "rui",
+    "rui-io",
+    "rui-util",
+    "rui-macros"
+]

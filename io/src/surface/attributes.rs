@@ -19,27 +19,27 @@ pub enum WindowState {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Modality {
-    NotModal,
-    ParentWindowModal,
-    ApplicationModal,
+    None,
+    ParentWindow,
+    Application,
 }
 
 #[derive(Debug, Clone)]
 pub struct Attributes<'a> {
     pub title: Cow<'a, str>,
     pub position: Point,
-    pub currentSize: Extent,
-    pub minimumSize: Extent,
-    pub maximumSize: Extent,
-    pub windowState: WindowState,
+    pub current_size: Extent,
+    pub minimum_size: Extent,
+    pub maximum_size: Extent,
+    pub window_state: WindowState,
     pub modality: Modality,
-    pub isActive: bool,
-    pub isResizable: bool,
-    pub hasTitlebar: bool,
-    pub hasMinimizeButton: bool,
-    pub hasMaximizeButton: bool,
-    pub hasCloseButton: bool,
-    pub hasHelpButton: bool
+    pub is_active: bool,
+    pub is_resizable: bool,
+    pub has_titlebar: bool,
+    pub has_minimize_button: bool,
+    pub has_maximize_button: bool,
+    pub has_close_button: bool,
+    pub has_help_button: bool
 }
 
 impl Default for Attributes<'static> {
@@ -47,18 +47,18 @@ impl Default for Attributes<'static> {
         Attributes {
             title: Default::default(),
             position: Point { x: 0, y: 0 },
-            currentSize: Extent { width: 480, height: 320 },
-            minimumSize: Extent { width: 0, height: 0 },
-            maximumSize: MAXIMUM_WINDOW_SIZE,
-            windowState: WindowState::Hidden,
+            current_size: Extent { width: 480, height: 320 },
+            minimum_size: Extent { width: 0, height: 0 },
+            maximum_size: MAXIMUM_WINDOW_SIZE,
+            window_state: WindowState::Hidden,
             modality: Modality::NotModal,
-            isActive: true,
-            isResizable: true,
-            hasTitlebar: true,
-            hasMinimizeButton: true,
-            hasMaximizeButton: true,
-            hasCloseButton: true,
-            hasHelpButton: false
+            is_active: true,
+            is_resizable: true,
+            has_titlebar: true,
+            has_minimize_button: true,
+            has_maximize_button: true,
+            has_close_button: true,
+            has_help_button: false
         }
     }
 }

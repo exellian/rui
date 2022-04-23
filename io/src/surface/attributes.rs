@@ -51,7 +51,7 @@ impl Default for Attributes<'static> {
             minimum_size: Extent { width: 0, height: 0 },
             maximum_size: MAXIMUM_WINDOW_SIZE,
             window_state: WindowState::Hidden,
-            modality: Modality::NotModal,
+            modality: Modality::None,
             is_active: true,
             is_resizable: true,
             has_titlebar: true,

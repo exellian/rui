@@ -1,27 +1,27 @@
 use std::fmt::{Debug, Display, Formatter};
 
-pub enum RendererError {
+pub enum Error {
     AdapterNotFound,
     DeviceCreationFailed(wgpu::RequestDeviceError),
 }
 
-impl Debug for RendererError {
+impl Debug for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            RendererError::AdapterNotFound => {
+            Error::AdapterNotFound => {
                 write!(f, "Adapter not found!")
             }
-            RendererError::DeviceCreationFailed(err) => {
+            Error::DeviceCreationFailed(err) => {
                 Debug::fmt(err, f)
             }
         }
     }
 }
 
-impl Display for RendererError {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self, f)
     }
 }
 
-impl std::error::Error for RendererError {}
+impl std::error::Error for Error {}

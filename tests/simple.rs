@@ -1,7 +1,6 @@
 use rui::component::Component;
 use rui::instance::{Backend, Instance};
 use rui::surface::Surface;
-use rui::util::Extent;
 use async_trait::async_trait;
 use rui::component::context::Context;
 use rui::node::{Node, component, path, comp};
@@ -18,8 +17,6 @@ impl Component for Root {
 
     async fn node(&mut self) -> Node {
         let mut paths = vec![];
-
-        let t: Taskl
 
         for _ in 0..200/8 {
             paths.push(path([22, 234, 0], [0.1, 0.1])
@@ -41,19 +38,17 @@ impl Component for Root {
     }
 }
 
-#[tokio::main]
+#[rui::main]
 async fn main() {
-    let mut instance = Instance::default();
-
     let surface = Surface::builder()
         .title("Test")
         .size(Extent {
             width: 720,
             height: 720
         })
-        .build(&instance)
+        .build()
         .expect("Failed to create window!");
     let root = component(Root);
-    instance.mount(surface, root).expect("Failed to mount root component!");
-    instance.run()
+    surface.mount(root);
+    //instance.mount(surface, root).expect("Failed to mount root component!");
 }

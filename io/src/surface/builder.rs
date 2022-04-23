@@ -28,22 +28,22 @@ impl<'a> Builder<'a> {
     }
 
     pub fn with_size(mut self, size: Extent) -> Self {
-        self.attributes.currentSize = size;
+        self.attributes.current_size = size;
         self
     }
 
     pub fn with_minimum_size(mut self, size: Extent) -> Self {
-        self.attributes.minimumSize = size;
+        self.attributes.minimum_size = size;
         self
     }
 
     pub fn with_maximum_size(mut self, size: Extent) -> Self {
-        self.attributes.maximumSize = size;
+        self.attributes.maximum_size = size;
         self
     }
 
     pub fn with_window_state(mut self, state: WindowState) -> Self {
-        self.attributes.windowState = state;
+        self.attributes.window_state = state;
         self
     }
 
@@ -53,37 +53,37 @@ impl<'a> Builder<'a> {
     }
 
     pub fn with_active_flag(mut self, active: bool) -> Self {
-        self.attributes.isActive = active;
+        self.attributes.is_active = active;
         self
     }
 
     pub fn with_resizability_flag(mut self, resizable: bool) -> Self {
-        self.attributes.isResizable = resizable;
+        self.attributes.is_resizable = resizable;
         self
     }
 
     pub fn with_titlebar(mut self, titlebar_enabled: bool) -> Self {
-        self.attributes.hasTitlebar = titlebar_enabled;
+        self.attributes.has_titlebar = titlebar_enabled;
         self
     }
 
     pub fn with_minimize_button(mut self, minimize_button_enabled: bool) -> Self {
-        self.attributes.hasMinimizeButton = minimize_button_enabled;
+        self.attributes.has_minimize_button = minimize_button_enabled;
         self
     }
 
     pub fn with_maximize_button(mut self, maximize_button_enabled: bool) -> Self {
-        self.attributes.hasMaximizeButton = maximize_button_enabled;
+        self.attributes.has_maximize_button = maximize_button_enabled;
         self
     }
 
     pub fn with_close_button(mut self, close_button_enabled: bool) -> Self {
-        self.attributes.hasCloseButton = close_button_enabled;
+        self.attributes.has_close_button = close_button_enabled;
         self
     }
 
     pub fn with_help_button(mut self, help_button_enabled: bool) -> Self {
-        self.attributes.hasHelpButton = help_button_enabled;
+        self.attributes.has_help_button = help_button_enabled;
         self
     }
     

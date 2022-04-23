@@ -15,7 +15,18 @@ impl ThreadEventQueue {
     }
 
     pub fn poll(&mut self, sender: &mut Sender<Event>) {
+        unsafe {
+            let mut msg = mem::zeroed();
 
+            match GetMessageW(&mut msg, 0, 0, 0) {
+                S_FALSE => {
+                    exit(0)
+                },
+                _ => {
+                    Ok(Some((&mut msg as *mut _ as u32).into()))
+                }
+            }
+        }
     }
 }
 

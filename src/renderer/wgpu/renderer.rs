@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use raw_window_handle::HasRawWindowHandle;
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
 use crate::surface::Surface;
 use async_trait::async_trait;
 use io::surface::SurfaceId;
 use util::Extent;
-use crate::renderer::wgpu::renderer_error::RendererError;
 use crate::Backend;
+use crate::renderer::wgpu::RendererError;
 
 pub struct RendererBase {
     pub(crate) instance: wgpu::Instance,
@@ -142,13 +141,6 @@ impl<B> crate::renderer::Renderer<B> for Renderer<B> where
         Ok(())
     }
 
-    fn request_render(&self) -> Result<(), Self::Error> {
-        for (_, job) in &self.jobs {
-            job.surface_adapter.request_redraw();
-        }
-        Ok(())
-    }
-
     fn render(&self, surface_id: SurfaceId) -> Result<(), Self::Error> {
 
         let base = self.base.as_ref()
@@ -190,6 +182,13 @@ impl<B> crate::renderer::Renderer<B> for Renderer<B> where
         base.queue.submit(Some(encoder.finish()));
         frame.present();
 
+        Ok(())
+    }
+
+    fn request_render(&self) -> Result<(), Self::Error> {
+        for (_, job) in &self.jobs {
+            job.surface_adapter.request_redraw();
+        }
         Ok(())
     }
 }

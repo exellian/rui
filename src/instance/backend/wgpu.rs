@@ -1,9 +1,7 @@
-use std::fmt::{Debug, Formatter};
-use std::marker::PhantomData;
-use crate::instance;
+use std::fmt::Debug;
 
 #[derive(Debug)]
-pub struct WGpu<T=()>(PhantomData<T>);
-impl<T> super::Backend for WGpu<T> where T: 'static + Sync + Send + Debug {
+pub struct WGpu;
+impl super::Backend for WGpu {
     type Renderer = crate::renderer::wgpu::Renderer<Self>;
 }

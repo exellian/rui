@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "rui",
     "rui-io",
+    "rui-async",
     "rui-util",
     "rui-macros"
 ]

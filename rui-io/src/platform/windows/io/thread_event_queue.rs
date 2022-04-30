@@ -1,4 +1,4 @@
-use crate::alloc::spmc::Sender;
+use rui_util::alloc::spmc::Sender;
 use crate::event::Event;
 
 pub struct ThreadEventQueue {

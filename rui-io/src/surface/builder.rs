@@ -1,10 +1,10 @@
 use rui_util::Extent;
 use crate::os_error::OsError;
-use crate::runtime::Runtime;
 use crate::surface::Surface;
 use std::borrow::Cow;
 use crate::surface::attributes::{Attributes, WindowState, Modality};
 use rui_util::point::Point;
+use crate::event::EventLoopTarget;
 
 pub struct Builder<'a> {
     attributes: Attributes<'a>
@@ -62,8 +62,8 @@ impl<'a> Builder<'a> {
         self
     }
 
-    pub fn with_titlebar(mut self, titlebar_enabled: bool) -> Self {
-        self.attributes.has_titlebar = titlebar_enabled;
+    pub fn with_borderless(mut self, borderless: bool) -> Self {
+        self.attributes.is_borderless = borderless;
         self
     }
 
@@ -87,7 +87,7 @@ impl<'a> Builder<'a> {
         self
     }
     
-    pub fn build(self, runtime: &Runtime) -> Result<Surface, OsError> {
+    pub fn build(self, target: &EventLoopTarget) -> Result<Surface, OsError> {
         Surface::try_from(&self.attributes)
     }
 }

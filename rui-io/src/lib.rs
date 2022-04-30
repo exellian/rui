@@ -1,11 +1,13 @@
-extern crate core;
+#[macro_use]
+extern crate objc;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub mod event;
 pub mod surface;
 mod platform;
 mod os_error;
-pub mod runtime;
-pub mod alloc;
 
 pub use os_error::OsError;
 

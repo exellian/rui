@@ -62,6 +62,7 @@ impl<B> Instance<B> where
                 SurfaceEvent::Redraw => {
                     self.renderer.render(id).unwrap();
                 }
+                _ => {}
             }
             Event::EventsCleared => {
                 self.renderer.request_render();

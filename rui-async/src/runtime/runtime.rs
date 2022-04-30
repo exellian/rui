@@ -2,7 +2,7 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
-use crate::alloc::mpmc;
+use rui_util::alloc::mpmc;
 use crate::event::Event;
 use crate::runtime::event_future::EventFuture;
 use crate::runtime::flow::Flow;

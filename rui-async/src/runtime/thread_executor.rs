@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::Poll;
 use std::thread;
 use std::thread::JoinHandle;
-use crate::alloc::{mpmc, spmc};
+use rui_util::alloc::{mpmc, spmc};
 use crate::event::Event;
 use crate::platform;
 use crate::runtime::flow::Flow;

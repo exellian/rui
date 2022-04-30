@@ -2,7 +2,9 @@ use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use crate::os_error::OsError;
 use crate::surface::SurfaceAttributes;
 
-pub struct Surface {}
+pub struct Surface {
+
+}
 
 unsafe impl HasRawWindowHandle for Surface {
     fn raw_window_handle(&self) -> RawWindowHandle {

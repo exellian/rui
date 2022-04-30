@@ -5,7 +5,7 @@ pub struct Sender<T>(crossbeam::channel::Sender<T>);
 
 impl<T> Sender<T> {
 
-    pub(crate) fn new(sender: crossbeam::channel::Sender<T>) -> Self {
+    pub fn new(sender: crossbeam::channel::Sender<T>) -> Self {
         Sender(sender)
     }
 

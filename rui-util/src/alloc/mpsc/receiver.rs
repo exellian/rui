@@ -2,7 +2,7 @@ pub struct Receiver<T>(crossbeam::channel::Receiver<T>);
 
 impl<T> Receiver<T> {
 
-    pub(crate) fn new(recv: crossbeam::channel::Receiver<T>) -> Self {
+    pub fn new(recv: crossbeam::channel::Receiver<T>) -> Self {
         Receiver(recv)
     }
 

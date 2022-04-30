@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use crate::event::Event;
-use crate::alloc::mpmc;
+use rui_util::alloc::mpmc;
 
 pub struct EventFuture<'a> {
     receiver: &'a mpmc::Receiver<Event>

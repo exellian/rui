@@ -10,7 +10,7 @@ unsafe impl<T> Send for Receiver<T> {}
 unsafe impl<T> Sync for Receiver<T> {}
 
 impl<T> Receiver<T> {
-    pub(crate) fn new(queue: Arc<ConcurrentQueue<T>>) -> Self {
+    pub fn new(queue: Arc<ConcurrentQueue<T>>) -> Self {
         Receiver {
             queue
         }

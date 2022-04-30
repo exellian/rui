@@ -1,3 +1,5 @@
+mod main;
+
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;

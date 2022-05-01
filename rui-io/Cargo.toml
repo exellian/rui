@@ -9,6 +9,7 @@ edition = "2021"
 lazy_static = "1.4.0"
 crossbeam = "0.8"
 rui-util = { path = "../rui-util" }
+rui-macros = { path = "../rui-macros" }
 raw-window-handle = "0.4"
 
 [[bench]]

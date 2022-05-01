@@ -12,14 +12,13 @@ pub use event::Event as SurfaceEvent;
 pub use error::Error as SurfaceError;
 use rui_util::Extent;
 
-use crate::os_error::OsError;
 use crate::platform;
 
-pub struct Surface(platform::Surface);
+pub struct Surface<'main, 'child>(platform::Surface<'main, 'child>);
 
-impl Surface {
+impl<'main, 'child> Surface<'main, 'child> {
 
-    fn new(surface: platform::Surface) -> Self {
+    fn new(surface: platform::Surface<'main, 'child>) -> Self {
         Surface(surface)
     }
 
@@ -40,16 +39,7 @@ impl Surface {
     }
 }
 
-impl<'a> TryFrom<&SurfaceAttributes<'a>> for Surface {
-    type Error = OsError;
-
-    fn try_from(value: &SurfaceAttributes<'a>) -> Result<Self, Self::Error> {
-        let surface = platform::Surface::try_from(value)?;
-        Ok(Surface::new(surface))
-    }
-}
-
-unsafe impl HasRawWindowHandle for Surface {
+unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {
     fn raw_window_handle(&self) -> RawWindowHandle {
         self.0.raw_window_handle()
     }

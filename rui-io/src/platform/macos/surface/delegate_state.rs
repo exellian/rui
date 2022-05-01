@@ -1,13 +1,10 @@
-use std::cell::RefCell;
-use std::ptr::NonNull;
-use std::rc::Rc;
-use std::sync::Arc;
 use cocoa::appkit::{NSView, NSWindow};
 use cocoa::base::id;
 use cocoa::foundation::NSUInteger;
 use objc::runtime::{BOOL, NO, YES};
 use rui_util::Extent;
 use crate::event::{Event, LoopTarget};
+use crate::platform::platform::util;
 use crate::surface::{SurfaceEvent, SurfaceId};
 
 pub struct DelegateState<'main, 'child> {
@@ -45,13 +42,13 @@ impl<'main, 'child> DelegateState<'main, 'child> {
         let rect = unsafe { NSView::frame(self.ns_view) };
         let scale_factor = self.get_scale_factor();
         let size = (rect.size.width as f64 * scale_factor, rect.size.height as f64 * scale_factor);
-        self.loop_target.call(Some(Event::SurfaceEvent {
+        util::queue_event(&self.loop_target, Event::SurfaceEvent {
             id: SurfaceId::from(0),//self.window.id, // TODO window id
             event: SurfaceEvent::Resized(Extent {
                 width: size.0.round() as u32,
                 height: size.1.round() as u32
             })
-        }));
+        });
     }
 
     pub fn window_did_move(&mut self) {

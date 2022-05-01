@@ -20,7 +20,7 @@ impl<'main> Loop<'main> {
         }
     }
 
-    pub fn run<'child>(&'child self, mut callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow)) -> ExitCode where 'child: 'main {
+    pub fn run<'child>(&'child mut self, mut callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow)) -> ExitCode where 'child: 'main {
         let mut flow = Flow::Wait;
         let target = LoopTarget::Child(self);
         self.state.start_weak();
@@ -31,9 +31,10 @@ impl<'main> Loop<'main> {
             if !self.state.is_running() {
                 break ExitCode::Default
             }
-            self.inner.process(&flow, |event| {
-                callback(&target, event, &mut flow);
-            });
+            let events = self.inner.process(&flow);
+            for event in &events {
+                callback(&target, Some(event), &mut flow);
+            }
         };
         exit_code
     }

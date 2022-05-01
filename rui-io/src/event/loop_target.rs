@@ -1,5 +1,6 @@
 use std::thread;
 use rui_util::ffi::NonNullSend;
+use crate::event::Event;
 use crate::event::exit_code::ExitCode;
 use crate::event::loop_control::LoopControl;
 use crate::event::loop_state::LoopStateRef;
@@ -19,21 +20,20 @@ impl<'main, 'child> LoopTarget<'main, 'child> where 'child: 'main {
             LoopTarget::Main(m) => *m,
             LoopTarget::Child(child_loop) => child_loop.main
         };
-        let main_ref = NonNullSend::from(main);
+        let main_ptr = NonNullSend::from(main);
         let loop_state = LoopStateRef::new();
         let loop_state_ret = loop_state.clone();
         {
             let mut controls_guard = main.child_loop_controls.write().unwrap();
             // todo ensure that thread only lives for 'main
-            let thread_handle = thread::spawn(|| {
+            let thread_handle = thread::spawn(move || {
                 // This is only safe because we ae making sure that the main loop was created before
                 // any other child thread and that the main loop lives the longest
-                let main = unsafe { main_ref.as_ref() };
+                let main = unsafe { main_ptr.as_ref() };
                 let local_loop = Loop::new(main, loop_state_ret);
                 callback(&local_loop)
             });
             controls_guard.push(LoopControl::new(loop_state, thread_handle))
         }
     }
-
 }

@@ -13,11 +13,11 @@ impl Class {
             let mut decl = ClassDecl::new(format!("Window{}", id).as_str(), window_superclass).unwrap();
             decl.add_method(
                 sel!(canBecomeMainWindow),
-                Self::can_become_main_window as extern "C" fn(&Object, Sel) -> BOOL,
+                Self::can_become_main_window as extern "C" fn(&mut Object, Sel) -> BOOL,
             );
             decl.add_method(
                 sel!(canBecomeKeyWindow),
-                Self::can_become_key_window as extern "C" fn(&Object, Sel) -> BOOL,
+                Self::can_become_key_window as extern "C" fn(&mut Object, Sel) -> BOOL,
             );
             decl.register()
         };
@@ -28,11 +28,11 @@ impl Class {
         &self.0
     }
 
-    pub extern "C" fn can_become_main_window(this: &Object, _: Sel) -> BOOL {
+    pub extern "C" fn can_become_main_window(this: &mut Object, _: Sel) -> BOOL {
         YES
     }
 
-    pub extern "C" fn can_become_key_window(this: &Object, _: Sel) -> BOOL {
+    pub extern "C" fn can_become_key_window(this: &mut Object, _: Sel) -> BOOL {
         YES
     }
 }

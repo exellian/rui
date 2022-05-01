@@ -2,7 +2,6 @@ use std::collections::{BTreeMap};
 use std::sync::Arc;
 
 use rui_io::event::Event;
-use rui_io::runtime::Runtime;
 use rui_io::surface::{SurfaceEvent, SurfaceId};
 use crate::{Backend, Node};
 use crate::instance::backend::WGpu;

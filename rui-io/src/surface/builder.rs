@@ -4,7 +4,8 @@ use crate::surface::Surface;
 use std::borrow::Cow;
 use crate::surface::attributes::{Attributes, WindowState, Modality};
 use rui_util::point::Point;
-use crate::event::EventLoopTarget;
+use crate::event::LoopTarget;
+use crate::platform;
 
 pub struct Builder<'a> {
     attributes: Attributes<'a>
@@ -87,7 +88,8 @@ impl<'a> Builder<'a> {
         self
     }
     
-    pub fn build(self, target: &EventLoopTarget) -> Result<Surface, OsError> {
-        Surface::try_from(&self.attributes)
+    pub fn build<'main, 'child>(self, target: &LoopTarget<'main, 'child>) -> Result<Surface<'main, 'child>, OsError> {
+        // TODO error handling
+        Ok(Surface::new(platform::Surface::new(target, &self.attributes)))
     }
 }

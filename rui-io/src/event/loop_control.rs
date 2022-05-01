@@ -18,7 +18,7 @@ impl LoopControl {
         self.loop_state.exit()
     }
 
-    pub fn join(&self) -> ExitCode {
+    pub fn join(self) -> ExitCode {
         self.thread_handle.join().unwrap()
     }
 }

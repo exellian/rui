@@ -83,13 +83,11 @@ impl<'main, 'child> ViewState<'main, 'child> {
         *marked_text_mut = marked_text;
     }
 
-    pub fn unmark_text(&mut self, view: &Object, marked_text: id) {
+    pub fn unmark_text(&mut self, marked_text: id) {
         let mutable_string = unsafe { marked_text.mutableString() };
         let s: id = unsafe { msg_send![class!(NSString), new] };
         let _: () = unsafe { msg_send![mutable_string, setString: s] };
         let _: () = unsafe { msg_send![s, release] };
-        let input_context: id = unsafe { msg_send![view, inputContext] };
-        let _: () = unsafe { msg_send![input_context, discardMarkedText] };
     }
 
     pub fn valid_attributes_for_marked_text(&mut self) -> id {

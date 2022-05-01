@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub enum ExitCode {
     Default = 0,
     Error = 1

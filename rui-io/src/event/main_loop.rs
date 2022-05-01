@@ -9,7 +9,7 @@ use crate::platform;
 pub struct MainLoop {
     state: LoopStateRef,
     pub(super) child_loop_controls: RwLock<Vec<LoopControl>>,
-    inner: platform::event::MainLoop
+    pub(crate) inner: platform::event::MainLoop
 }
 impl MainLoop {
 
@@ -21,20 +21,21 @@ impl MainLoop {
         }
     }
 
-    pub fn run<'main>(&'main self, mut callback: impl FnMut(&LoopTarget<'main, 'main>, &Option<Event>, &mut Flow)) -> ! {
+    pub fn run<'main>(&'main mut self, mut callback: impl FnMut(&LoopTarget<'main, 'main>, Option<&Event>, &mut Flow)) -> ! {
         let mut flow = Flow::Wait;
         let target = LoopTarget::Main(self);
         let exit_code = loop {
             if let Flow::Exit(exit_code ) = flow {
                 break exit_code
             }
-            self.inner.process(&flow, |event| {
-                callback(&target, event, &mut flow);
-            });
+            let events = self.inner.process(&flow);
+            for event in &events {
+                callback(&target, Some(event), &mut flow);
+            }
         };
         {
             let mut child_controls = self.child_loop_controls.write().unwrap();
-            for ctx in child_controls.drain(..) {
+            for mut ctx in child_controls.drain(..) {
                 ctx.signal_exit();
                 let exit_code = ctx.join();
                 if !exit_code.is_success() {

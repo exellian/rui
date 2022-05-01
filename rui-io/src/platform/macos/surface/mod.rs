@@ -4,6 +4,7 @@ mod class;
 mod view_class;
 mod view_state;
 
+use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::sync::atomic::{AtomicU64, Ordering};
 use cocoa::appkit::{CGFloat, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
@@ -26,7 +27,9 @@ pub struct Surface<'main, 'child> {
     ns_window: id,
     ns_view: id,
     view_state: Box<ViewState<'main, 'child>>,
-    delegate_state: Box<DelegateState<'main, 'child>>
+    delegate_state: Box<DelegateState<'main, 'child>>,
+    // Ensure that the window cannot be send between threads
+    _non_send: PhantomData<*const ()>
 }
 impl<'main, 'child> Surface<'main, 'child> {
 
@@ -96,7 +99,8 @@ impl<'main, 'child> Surface<'main, 'child> {
             ns_window,
             ns_view,
             view_state,
-            delegate_state
+            delegate_state,
+            _non_send: PhantomData
         };
 
         window

@@ -3,17 +3,17 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use crate::runtime::task::dyn_task::DynTask;
+use crate::schedular::task::output::Output;
 
 pub struct JoinHandle<T> {
-    task: Arc<DynTask>,
+    output: Arc<Output<T>>,
     _t: PhantomData<T>
 }
 impl<T> JoinHandle<T> {
 
-    pub fn new(task: Arc<DynTask>) -> Self {
+    pub fn new(output: Arc<Output<T>>) -> Self {
         JoinHandle {
-            task,
+            output,
             _t: PhantomData
         }
     }
@@ -21,7 +21,7 @@ impl<T> JoinHandle<T> {
 impl<T> Future for JoinHandle<T> where T: 'static {
     type Output = T;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.task.poll_consume::<T>()
+    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+        self.output.poll_consume()
     }
 }

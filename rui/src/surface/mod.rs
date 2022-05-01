@@ -5,11 +5,11 @@ pub use builder::Builder as SurfaceBuilder;
 use rui_io::surface::SurfaceId;
 use rui_util::Extent;
 
-pub struct Surface(rui_io::surface::Surface);
+pub struct Surface(rui_io::surface::SurfaceId);
 
 impl Surface {
 
-    pub fn new(surface: rui_io::surface::Surface) -> Self {
+    pub fn new(surface: rui_io::surface::SurfaceId) -> Self {
         Surface(surface)
     }
 
@@ -18,20 +18,20 @@ impl Surface {
     }
 
     pub fn inner_size(&self) -> Extent {
-        self.0.inner_size()
+        todo!()
     }
 
     pub fn id(&self) -> SurfaceId {
-        self.0.id()
+        self.0
     }
 
     pub fn request_redraw(&self) {
-        self.0.request_redraw()
+        todo!()
     }
 }
 
 unsafe impl HasRawWindowHandle for Surface {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        self.0.raw_window_handle()
+        todo!()
     }
 }

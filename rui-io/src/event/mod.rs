@@ -11,6 +11,9 @@ mod queue;
 use crate::surface::{SurfaceEvent, SurfaceId};
 
 pub use flow::Flow;
+pub use r#loop::Loop as EventLoop;
+pub use loop_target::LoopTarget as EventLoopTarget;
+pub use main_loop::MainLoop as MainEventLoop;
 pub(crate) use inner_loop::InnerLoop;
 pub(crate) use queue::Queue;
 

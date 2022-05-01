@@ -1,3 +1,5 @@
+#![feature(thread_spawn_unchecked)]
+
 #[macro_use]
 extern crate objc;
 

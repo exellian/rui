@@ -4,7 +4,7 @@ use rui::surface::Surface;
 use async_trait::async_trait;
 use rui::component::context::Context;
 use rui::node::{Node, component, path, comp};
-use util::Extent;
+use rui_util::Extent;
 
 struct Root;
 
@@ -38,6 +38,9 @@ impl Component for Root {
     }
 }
 
+fn main() {}
+
+/*
 #[rui::main]
 async fn main() {
     let surface = Surface::builder()
@@ -52,3 +55,4 @@ async fn main() {
     surface.mount(root);
     //instance.mount(surface, root).expect("Failed to mount root component!");
 }
+*/

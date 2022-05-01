@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap};
 use std::sync::Arc;
+use rui_async::Scheduler;
 
-use rui_io::event::Event;
+use rui_io::event::{Event, MainEventLoop};
 use rui_io::surface::{SurfaceEvent, SurfaceId};
 use crate::{Backend, Node};
 use crate::instance::backend::WGpu;
@@ -14,7 +15,6 @@ pub struct Instance<B> where
 {
     pub(crate) renderer: B::Renderer,
     nodes: BTreeMap<SurfaceId, Node>,
-    pub(crate) runtime: Runtime
 }
 //TODO check thread safety for Instance struct
 unsafe impl<B> Send for Instance<B> where B: Backend {}
@@ -35,7 +35,6 @@ impl<B> Instance<B> where
         Instance {
             renderer,
             nodes: BTreeMap::new(),
-            runtime: Runtime::new(4)
         }
     }
 
@@ -77,13 +76,12 @@ impl<B> Instance<B> where
     ///
     /// # Arguments
     /// * `self` - This function takes ownership of self because it doesn't terminate
-    pub fn run(mut self) -> ! {
-
-        let this = Arc::new(self);
-        this.clone().runtime.run(async move {
-            loop {
-                let event = this.runtime.recv_event().await;
-            }
+    pub fn run(self) -> ! {
+        let mut main_event_loop = MainEventLoop::new();
+        let scheduler = Scheduler::new();
+        let main_worker = scheduler.new_worker();
+        main_event_loop.run(|target, event, flow| {
+            main_worker.spawn(async {});
         })
     }
 }

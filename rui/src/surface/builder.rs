@@ -29,7 +29,7 @@ impl<'a> Builder<'a> {
 
     //TODO add more properties to builder
 
-    pub fn build<B>(self, instance: &Instance<B>) -> Result<Surface, OsError> where B: Backend {
-        Ok(Surface::new(self.inner.build(&instance.runtime)?))
+    pub fn build<B>(self) -> Result<Surface, OsError> where B: Backend {
+        todo!()
     }
 }

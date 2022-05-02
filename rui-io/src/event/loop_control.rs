@@ -2,7 +2,7 @@ use std::thread::JoinHandle;
 use crate::event::exit_code::ExitCode;
 use crate::event::loop_state::LoopStateRef;
 
-/// This is used to control [MainLoop] and [Loop]
+/// This is used to control [Loop]
 pub struct LoopControl {
     loop_state: LoopStateRef,
     thread_handle: JoinHandle<ExitCode>

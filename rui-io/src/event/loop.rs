@@ -5,7 +5,8 @@ use crate::event::loop_target::LoopTarget;
 use crate::event::main_loop::MainLoop;
 use crate::platform;
 
-/// Loop is the main handle to deal with a event loop.
+/// Loop is the handle to for a child event loop. Read more about the relationship between the main
+/// and the child loop in the documentation of the [MainLoop].
 pub struct Loop<'main> {
     /// This reference to the MainLoop is necessary because some operating system require to perform
     /// some task exclusively on the main thread.
@@ -21,6 +22,8 @@ impl<'main> Loop<'main> {
     ///
     ///  - [main: &'main MainLoop](MainLoop) A reference to the main loop which is necessary on serveral operating
     ///    systems as they require certain tasks to be run on the main thread.
+    ///    Furthermore the lifetime bound ensures that each [Loop] does not outlive the [MainLoop].
+    ///    This grants us the possibility to borrow data from other threads.
     ///  - [state: LoopStateRef](LoopStateRef) may be used in conjunction with [`crate::event::loop_control::LoopControl`]
     ///    to have a thread-safe way of starting and stopping the loop.
     pub fn new(main: &'main MainLoop, state: LoopStateRef) -> Self {

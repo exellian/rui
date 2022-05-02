@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Waker};
 use rui_util::alloc::spmc;
-use crate::schedular::Scheduler;
-use crate::schedular::task::{JoinHandle, RawTask, Status, Task};
+use crate::scheduler::Scheduler;
+use crate::scheduler::task::{JoinHandle, RawTask, Status, Task};
 
 pub struct InnerWorker<'scheduler> {
     id: usize,

@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::ptr::NonNull;
 use std::sync::RwLock;
 use rui_util::alloc::mpmc;
-use crate::schedular::inner_worker::InnerWorker;
-use crate::schedular::task::RawTask;
+use crate::scheduler::inner_worker::InnerWorker;
+use crate::scheduler::task::RawTask;
 
 pub struct Scheduler {
     global_sender: mpmc::Sender<RawTask>,

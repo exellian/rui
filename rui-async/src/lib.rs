@@ -1,7 +1,7 @@
-mod schedular;
+mod scheduler;
 
-pub use schedular::Scheduler;
-pub use schedular::Worker;
+pub use scheduler::Scheduler;
+pub use scheduler::Worker;
 
 #[cfg(test)]
 mod tests {

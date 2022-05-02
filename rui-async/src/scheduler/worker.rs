@@ -1,8 +1,8 @@
 use std::future::Future;
 use std::ptr::NonNull;
-use crate::schedular::inner_worker::InnerWorker;
-use crate::schedular::Scheduler;
-use crate::schedular::task::{JoinHandle, RawTask};
+use crate::scheduler::inner_worker::InnerWorker;
+use crate::scheduler::Scheduler;
+use crate::scheduler::task::{JoinHandle, RawTask};
 
 pub struct Worker<'scheduler> {
     inner: Box<InnerWorker<'scheduler>>

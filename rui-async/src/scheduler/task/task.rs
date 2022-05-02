@@ -3,8 +3,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::{Context, Poll};
-use crate::schedular::task::output::Output;
-use crate::schedular::task::Status;
+use crate::scheduler::task::output::Output;
+use crate::scheduler::task::Status;
 
 
 pub struct Task<F> where F: Future {

@@ -1,9 +1,9 @@
 use std::future::Future;
 use std::ptr::NonNull;
 use std::task::Context;
-use crate::schedular::task::Status;
-use crate::schedular::task::task::{Task};
-use crate::schedular::task::waker::RawWaker;
+use crate::scheduler::task::Status;
+use crate::scheduler::task::task::{Task};
+use crate::scheduler::task::waker::RawWaker;
 
 pub struct VTable {
     poll: unsafe fn(NonNull<()>, cx: &mut Context<'_>) -> Status,

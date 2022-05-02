@@ -2,7 +2,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::task::RawWakerVTable;
-use crate::schedular::task::task::Task;
+use crate::scheduler::task::task::Task;
 
 pub struct RawWaker {
     waker: std::task::Waker,

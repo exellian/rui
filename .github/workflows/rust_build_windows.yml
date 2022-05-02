@@ -15,19 +15,29 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Cache
-      uses: actions/cache@v3.0.2
-      with:
-        # A list of files, directories, and wildcard patterns to cache and restore
-        path: target
-        # An explicit key for restoring and saving the cache
-        key: build_artifacts
-        # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
-        # restore-keys: # optional
-        # The chunk size used to split up large files during upload, in bytes
-        # upload-chunk-size: # optional
-
-
+      - uses: actions/checkout@v3
+      - name: Install latest nightly version of rustc
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          # components:
+      - name: Print version
+        uses: actions-rs/cargo@v1
+        with:
+          command: version
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - name: Cache
+        uses: actions/cache@v3.0.2
+        with:
+          # A list of files, directories, and wildcard patterns to cache and restore
+          path: target
+          # An explicit key for restoring and saving the cache
+          key: build_artifacts
+          # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
+          # restore-keys: # optional
+          # The chunk size used to split up large files during upload, in bytes
+          # upload-chunk-size: # optional

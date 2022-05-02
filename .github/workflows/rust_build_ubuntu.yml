@@ -16,8 +16,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install latest nightly version of rustc
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          # components:
+      - name: Print version
+        uses: actions-rs/cargo@v1
+        with:
+          command: version
       - name: Build
-        run: cargo build --verbose
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
       - name: Cache
         uses: actions/cache@v3.0.2
         with:

@@ -1,23 +1,22 @@
+mod inner_worker;
 pub(crate) mod task;
 mod worker;
-mod inner_worker;
 
 pub use worker::Worker;
 
+use crate::scheduler::inner_worker::InnerWorker;
+use crate::scheduler::task::RawTask;
+use rui_util::alloc::mpmc;
 use std::collections::HashMap;
 use std::ptr::NonNull;
 use std::sync::RwLock;
-use rui_util::alloc::mpmc;
-use crate::scheduler::inner_worker::InnerWorker;
-use crate::scheduler::task::RawTask;
 
 pub struct Scheduler {
     global_sender: mpmc::Sender<RawTask>,
     global_receiver: mpmc::Receiver<RawTask>,
-    workers: RwLock<HashMap<usize, NonNull<()>>>
+    workers: RwLock<HashMap<usize, NonNull<()>>>,
 }
 impl Scheduler {
-
     const DEFAULT_LOCAL_QUEUE_SIZE: usize = 1024;
 
     pub fn new() -> Self {
@@ -25,7 +24,7 @@ impl Scheduler {
         Scheduler {
             global_sender,
             global_receiver,
-            workers: RwLock::new(HashMap::new())
+            workers: RwLock::new(HashMap::new()),
         }
     }
 
@@ -56,7 +55,7 @@ impl Scheduler {
             let worker = unsafe { Self::cast_worker::<'this, '_>(worker_raw.clone()) };
             match worker.try_steal() {
                 None => {}
-                Some(task) => return Some(task)
+                Some(task) => return Some(task),
             }
         }
         None

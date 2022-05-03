@@ -1,19 +1,19 @@
+use crate::renderer::wgpu::primitive;
+use crate::util::Resource;
+use image::load;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
-use image::load;
-use wgpu::BindGroupLayout;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::BindGroupLayout;
 use wgpu_types::BufferUsages;
-use crate::renderer::wgpu::primitive;
-use crate::util::Resource;
 
 pub struct Texture {
     texture: wgpu::Texture,
     texture_view: wgpu::TextureView,
     instance_buffer: wgpu::Buffer,
     instance_bind_group: wgpu::BindGroup,
-    texture_bind_group: wgpu::BindGroup
+    texture_bind_group: wgpu::BindGroup,
 }
 
 pub struct ImagePipeline {
@@ -23,12 +23,10 @@ pub struct ImagePipeline {
     globals_buffer: wgpu::Buffer,
     globals_bind_group: wgpu::BindGroup,
     texture_bind_group_layout: BindGroupLayout,
-    instance_bind_group_layout: BindGroupLayout
+    instance_bind_group_layout: BindGroupLayout,
 }
 impl ImagePipeline {
-
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
-
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -40,57 +38,53 @@ impl ImagePipeline {
         });
 
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
 
         let globals_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("globals_buffer"),
             contents: bytemuck::cast_slice(&[globals]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let globals_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("globals_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let globals_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("globals_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
-                    count: None
-                }
-            ]
-        });
+                    count: None,
+                }],
+            });
 
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: globals_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: globals_buffer.as_entire_binding(),
+            }],
             label: Some("globals_bind_group"),
         });
 
-        let instance_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("instance_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let instance_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("instance_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
-                    count: None
-                }
-            ]
-        });
+                    count: None,
+                }],
+            });
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -119,13 +113,19 @@ impl ImagePipeline {
 
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: None,
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../../shader/image.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../../../../shader/image.wgsl"
+            ))),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             // Group 0 globals, 1 instance, 2 texture
-            bind_group_layouts: &[&globals_bind_group_layout, &instance_bind_group_layout, &texture_bind_group_layout],
+            bind_group_layouts: &[
+                &globals_bind_group_layout,
+                &instance_bind_group_layout,
+                &texture_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -158,7 +158,7 @@ impl ImagePipeline {
             globals_buffer,
             globals_bind_group,
             texture_bind_group_layout,
-            instance_bind_group_layout
+            instance_bind_group_layout,
         }
     }
 
@@ -186,15 +186,19 @@ impl ImagePipeline {
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
     }
 
-    pub async fn mount(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, images: &Vec<primitive::Image>) {
+    pub async fn mount(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        images: &Vec<primitive::Image>,
+    ) {
         let mut textures = Vec::with_capacity(images.len());
         for i in images {
-
             let bytes = Self::load(&i.resource).await;
             let image = image::load_from_memory(&bytes).unwrap();
             let rgba = image.to_rgba8();
@@ -203,7 +207,7 @@ impl ImagePipeline {
             let instance_buffer = device.create_buffer_init(&BufferInitDescriptor {
                 label: Some("instance_buffer"),
                 contents: bytemuck::cast_slice(&[i.instance]),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             });
 
             let texture_size = wgpu::Extent3d {
@@ -211,22 +215,20 @@ impl ImagePipeline {
                 height: dimensions.1,
                 depth_or_array_layers: 1,
             };
-            let texture = device.create_texture(
-                &wgpu::TextureDescriptor {
-                    // All textures are stored as 3D, we represent our 2D texture
-                    // by setting depth to 1.
-                    size: texture_size,
-                    mip_level_count: 1, // We'll talk about this a little later
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    // Most images are stored using sRGB so we need to reflect that here.
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
-                    // COPY_DST means that we want to copy data to this texture
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                    label: Some("texture"),
-                }
-            );
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                // All textures are stored as 3D, we represent our 2D texture
+                // by setting depth to 1.
+                size: texture_size,
+                mip_level_count: 1, // We'll talk about this a little later
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                // Most images are stored using sRGB so we need to reflect that here.
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                // TEXTURE_BINDING tells wgpu that we want to use this texture in shaders
+                // COPY_DST means that we want to copy data to this texture
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                label: Some("texture"),
+            });
             queue.write_texture(
                 // Tells wgpu where to copy the pixel data
                 wgpu::ImageCopyTexture {
@@ -250,31 +252,27 @@ impl ImagePipeline {
             // let wgpu define it.
             let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let texture_bind_group = device.create_bind_group(
-                &wgpu::BindGroupDescriptor {
-                    layout: &self.texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&texture_view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&self.sampler),
-                        }
-                    ],
-                    label: Some("diffuse_bind_group"),
-                }
-            );
-
-            let instance_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.instance_bind_group_layout,
+            let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.texture_bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: instance_buffer.as_entire_binding(),
-                    }
+                        resource: wgpu::BindingResource::TextureView(&texture_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
                 ],
+                label: Some("diffuse_bind_group"),
+            });
+
+            let instance_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.instance_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: instance_buffer.as_entire_binding(),
+                }],
                 label: Some("camera_bind_group"),
             });
 
@@ -283,7 +281,7 @@ impl ImagePipeline {
                 texture_view,
                 instance_buffer,
                 instance_bind_group,
-                texture_bind_group
+                texture_bind_group,
             });
         }
         self.textures = textures;

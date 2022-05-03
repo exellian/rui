@@ -1,40 +1,69 @@
-use std::cell::RefCell;
-use std::collections::VecDeque;
-use std::mem;
+use std::pin::Pin;
+
+use cocoa::appkit::NSEventMask;
 use cocoa::base::{id, nil};
-use objc::rc::autoreleasepool;
-use cocoa::appkit::{NSApp, NSEventMask};
 use cocoa::foundation::NSDefaultRunLoopMode;
-use objc::runtime::YES;
-use crate::event::{Event, Flow, InnerLoop};
+use objc::rc::autoreleasepool;
+use objc::runtime::{BOOL, NO, YES};
+
+use crate::event::{Flow, InnerLoop};
+use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
+use crate::platform::event::Queue;
 
 pub struct MainLoop {
-    app: id,
-    queue: RefCell<VecDeque<Event>>
+    ns_app: id,
+    ns_app_delegate: id,
+    app_delegate_state: Pin<Box<AppDelegateState>>,
+    pub(crate) queue: Queue,
 }
+
 impl MainLoop {
-
     pub fn new() -> Self {
+        let is_main_thread: BOOL = unsafe { msg_send!(class!(NSThread), isMainThread) };
+        if is_main_thread == NO {
+            panic!("On macOS, `EventLoop` must be created on the main thread!");
+        }
 
+        lazy_static! {
+            static ref APP_CLASS: AppClass = AppClass::new();
+            static ref APP_DELEGATE_CLASS: AppDelegateClass = AppDelegateClass::new();
+        }
+
+        let queue = Queue::new();
+
+        // This must be done before `NSApp()` (equivalent to sending
+        // `sharedApplication`) is called anywhere else, or we'll end up
+        // with the wrong `NSApplication` class and the wrong thread could
+        // be marked as main.
+        let ns_app: id = unsafe { msg_send![APP_CLASS.0, sharedApplication] };
+
+        let mut app_delegate_state = Box::pin(AppDelegateState::new(queue.clone()));
+        let app_delegate_state_ptr =
+            unsafe { app_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
+        let ns_app_delegate_alloc: id = unsafe { msg_send![APP_DELEGATE_CLASS.0, alloc] };
+        let ns_app_delegate: id =
+            unsafe { msg_send![ns_app_delegate_alloc, initWithState: app_delegate_state_ptr] };
+        autoreleasepool(|| {
+            let _: () = unsafe { msg_send![ns_app, setDelegate: ns_app_delegate] };
+        });
 
         MainLoop {
-            app: unsafe { NSApp() },
-            queue: RefCell::new(VecDeque::new())
+            ns_app,
+            ns_app_delegate,
+            app_delegate_state,
+            queue,
         }
     }
-
-    pub(crate) fn queue_event(&self, event: Event) {
-        self.queue.borrow_mut().push_back(event);
-    }
 }
+
 impl InnerLoop for MainLoop {
+    type Queue = Queue;
 
     fn wake_up(&self) {
         todo!()
     }
 
-    fn process(&self, flow: &Flow) -> VecDeque<Event> {
-
+    fn process(&mut self, flow: &Flow) -> &mut Queue {
         // This block will try to receive the next event from the event queue.
         // The event (NSEvent) gets then propagated through the application by calling sendEvent: event
         // After the call the magic happens and the own event queue gets filled with events:
@@ -44,20 +73,19 @@ impl InnerLoop for MainLoop {
             let until_date: id = match flow {
                 Flow::Wait => msg_send![class!(NSDate), distantFuture],
                 Flow::Poll => nil, // See https://github.com/exellian/rui/issues/28#issuecomment-1109153317
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             let event: id = msg_send![
-                self.app,
+                self.ns_app,
                 nextEventMatchingMask:(NSEventMask::NSAnyEventMask)
                 untilDate:until_date
                 inMode:NSDefaultRunLoopMode
                 dequeue:YES
             ];
             if event != nil {
-                let _: () = msg_send![self.app, sendEvent:event];
+                let _: () = msg_send![self.ns_app, sendEvent: event];
             }
         });
-        // Take the events in the event queue and return them
-        mem::take(&mut *self.queue.borrow_mut())
+        &mut self.queue
     }
 }

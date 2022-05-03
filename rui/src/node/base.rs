@@ -1,11 +1,11 @@
-use rui_util::{Extent, Offset};
 use crate::util::{Color, Flags, Rect};
+use rui_util::{Extent, Offset};
 
 pub struct BaseNode {
     pub(crate) flags: Flags,
     pub(crate) bounding_rect: Rect,
     pub(crate) background: Color,
-    pub(crate) border_radii: [f32;4]
+    pub(crate) border_radii: [f32; 4],
 }
 
 impl Default for BaseNode {
@@ -13,17 +13,14 @@ impl Default for BaseNode {
         BaseNode {
             flags: Flags::DEFAULT,
             bounding_rect: Rect {
-                offset: Offset {
-                    x: 0,
-                    y: 0
-                },
+                offset: Offset { x: 0, y: 0 },
                 extent: Extent {
                     width: 0,
-                    height: 0
-                }
+                    height: 0,
+                },
             },
             background: Color::BLACK,
-            border_radii: [0.0, 0.0, 0.0, 0.0]
+            border_radii: [0.0, 0.0, 0.0, 0.0],
         }
     }
 }

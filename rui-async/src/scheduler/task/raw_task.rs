@@ -1,13 +1,13 @@
+use crate::scheduler::task::task::Task;
+use crate::scheduler::task::waker::RawWaker;
+use crate::scheduler::task::Status;
 use std::future::Future;
 use std::ptr::NonNull;
 use std::task::Context;
-use crate::scheduler::task::Status;
-use crate::scheduler::task::task::{Task};
-use crate::scheduler::task::waker::RawWaker;
 
 pub struct VTable {
     poll: unsafe fn(NonNull<()>, cx: &mut Context<'_>) -> Status,
-    drop: unsafe fn(NonNull<()>)
+    drop: unsafe fn(NonNull<()>),
 }
 
 /// The lifetime 'scheduler ensures that the RawTask doesn't
@@ -15,27 +15,23 @@ pub struct VTable {
 pub struct RawTask {
     task: NonNull<()>,
     vtable: VTable,
-    waker: RawWaker //<'scheduler>
+    waker: RawWaker, //<'scheduler>
 }
 
 // TODO make safe with lifetime argument
 impl RawTask {
-
-    pub unsafe fn new_unchecked<F>(task: Task<F>) -> Self where
-        F: Future //+ 'scheduler
+    pub unsafe fn new_unchecked<F>(task: Task<F>) -> Self
+    where
+        F: Future, //+ 'scheduler
     {
-        let task = unsafe {
-            NonNull::new_unchecked(
-            Box::into_raw(Box::new(task))
-            )
-        };
+        let task = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(task))) };
         RawTask {
             task: task.cast(),
             vtable: VTable {
                 poll: Self::_poll::<F>,
-                drop: Self::_drop::<F>
+                drop: Self::_drop::<F>,
             },
-            waker: unsafe { RawWaker::new_unchecked(task) }
+            waker: unsafe { RawWaker::new_unchecked(task) },
         }
     }
 
@@ -45,15 +41,17 @@ impl RawTask {
         unsafe { (self.vtable.poll)(self.task, &mut cx) }
     }
 
-    unsafe fn _poll<F>(task: NonNull<()>, cx: &mut Context<'_>) -> Status where
-        F: Future //+ 'scheduler
+    unsafe fn _poll<F>(task: NonNull<()>, cx: &mut Context<'_>) -> Status
+    where
+        F: Future, //+ 'scheduler
     {
         let task = task.cast::<Task<F>>().as_mut();
         task.poll(cx)
     }
 
-    unsafe fn _drop<F>(task: NonNull<()>) where
-        F: Future //+ 'scheduler
+    unsafe fn _drop<F>(task: NonNull<()>)
+    where
+        F: Future, //+ 'scheduler
     {
         // Drop task
         Box::from_raw(task.cast::<Task<F>>().as_ptr());
@@ -61,8 +59,6 @@ impl RawTask {
 }
 impl Drop for RawTask {
     fn drop(&mut self) {
-        unsafe {
-            (self.vtable.drop)(self.task)
-        }
+        unsafe { (self.vtable.drop)(self.task) }
     }
 }

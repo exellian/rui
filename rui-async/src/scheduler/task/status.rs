@@ -1,4 +1,4 @@
 pub enum Status {
     Pending,
-    Ready
+    Ready,
 }

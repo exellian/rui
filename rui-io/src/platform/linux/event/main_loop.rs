@@ -13,7 +13,11 @@ impl InnerLoop for MainLoop {
         todo!()
     }
 
-    fn process(&self, flow: &Flow) -> std::collections::vec_deque::VecDeque<Event> {
+    fn init(&mut self) {
+        todo!()
+    }
+
+    fn process(&mut self, flow: &Flow) -> VecDeque<Event> {
         todo!()
     }
 }

@@ -13,5 +13,5 @@ pub enum Node {
     Composition(BaseNode, CompositionNode),
     Image(BaseNode, ImageNode),
     Text(BaseNode, TextNode),
-    Component(BaseNode, Box<dyn Component + Sync + Send>)
+    Component(BaseNode, Box<dyn Component + Sync + Send>),
 }

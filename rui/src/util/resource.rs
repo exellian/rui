@@ -1,4 +1,4 @@
 #[derive(Clone)]
 pub enum Resource {
-    Path(std::path::PathBuf)
+    Path(std::path::PathBuf),
 }

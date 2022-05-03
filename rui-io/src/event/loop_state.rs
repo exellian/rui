@@ -1,11 +1,11 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 /// LoopStateRef holds the current state of a loop and is used in conjunction with
 /// [`crate::event::loop_control::LoopControl`] to start and stop a loop.
 #[derive(Clone)]
 pub struct LoopStateRef {
-    inner: Arc<AtomicUsize>
+    inner: Arc<AtomicUsize>,
 }
 
 impl LoopStateRef {
@@ -16,7 +16,7 @@ impl LoopStateRef {
     /// Initializes a [LoopStateRef]
     pub fn new() -> Self {
         LoopStateRef {
-            inner: Arc::new(AtomicUsize::new(Self::INIT))
+            inner: Arc::new(AtomicUsize::new(Self::INIT)),
         }
     }
 
@@ -25,15 +25,20 @@ impl LoopStateRef {
         self.inner.load(Ordering::Acquire) == Self::RUNNING
     }
 
-    /// Starts the loop
+    /// Starts the loop or does nothing if the start failed
     pub fn start_weak(&self) {
         loop {
-            match self.inner.compare_exchange_weak(Self::INIT, Self::RUNNING, Ordering::Release, Ordering::Relaxed) {
+            match self.inner.compare_exchange_weak(
+                Self::INIT,
+                Self::RUNNING,
+                Ordering::Release,
+                Ordering::Relaxed,
+            ) {
                 Ok(_) => break,
                 Err(x) => match x {
-                    Self::INIT => {},
+                    Self::INIT => {}
                     _ => break,
-                }
+                },
             }
         }
     }

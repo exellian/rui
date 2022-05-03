@@ -4,7 +4,6 @@ use crossbeam::channel::TrySendError;
 pub struct Sender<T>(crossbeam::channel::Sender<T>);
 
 impl<T> Sender<T> {
-
     pub fn new(sender: crossbeam::channel::Sender<T>) -> Self {
         Sender(sender)
     }
@@ -14,8 +13,8 @@ impl<T> Sender<T> {
             Ok(_) => Ok(()),
             Err(err) => match err {
                 TrySendError::Full(x) => Err(x),
-                TrySendError::Disconnected(x) => Err(x)
-            }
+                TrySendError::Disconnected(x) => Err(x),
+            },
         }
     }
 }

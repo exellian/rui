@@ -1,7 +1,7 @@
-mod renderer;
 mod error;
 mod pipeline;
 mod primitive;
+mod renderer;
 
-pub use renderer::Renderer;
 pub use error::Error as RendererError;
+pub use renderer::Renderer;

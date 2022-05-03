@@ -1,17 +1,18 @@
-use std::collections::{BTreeMap};
-use std::sync::Arc;
 use rui_async::Scheduler;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use rui_io::event::{Event, MainEventLoop};
-use rui_io::surface::{SurfaceEvent, SurfaceId};
-use crate::{Backend, Node};
 use crate::instance::backend::WGpu;
 use crate::instance::error::Error;
 use crate::renderer::Renderer;
 use crate::surface::Surface;
+use crate::{Backend, Node};
+use rui_io::event::{Event, MainEventLoop};
+use rui_io::surface::{SurfaceEvent, SurfaceId};
 
-pub struct Instance<B> where
-    B: Backend
+pub struct Instance<B>
+where
+    B: Backend,
 {
     pub(crate) renderer: B::Renderer,
     nodes: BTreeMap<SurfaceId, Node>,
@@ -27,10 +28,10 @@ impl Default for Instance<WGpu> {
         Instance::new(renderer)
     }
 }
-impl<B> Instance<B> where
-    B: Backend + 'static
+impl<B> Instance<B>
+where
+    B: Backend + 'static,
 {
-
     pub fn new(renderer: B::Renderer) -> Self {
         Instance {
             renderer,
@@ -38,9 +39,13 @@ impl<B> Instance<B> where
         }
     }
 
-    pub(crate) async fn _mount(&mut self, surface: Arc<Surface>, mut node: Node) -> Result<(), Error<B>> {
+    pub(crate) async fn _mount(
+        &mut self,
+        surface: Arc<Surface>,
+        mut node: Node,
+    ) -> Result<(), Error<B>> {
         if let Err(err) = self.renderer.mount(surface.clone(), &mut node).await {
-            return Err(Error::RendererError(err))
+            return Err(Error::RendererError(err));
         }
         self.nodes.insert(surface.id(), node);
         Ok(())
@@ -54,17 +59,17 @@ impl<B> Instance<B> where
         match event {
             Event::SurfaceEvent { id, event } => match event {
                 SurfaceEvent::Resized(extent) => {
-                    self.renderer.resize( id, extent).await.unwrap();
+                    self.renderer.resize(id, extent).await.unwrap();
                     //self.renderer.render(id).unwrap();
                 }
                 SurfaceEvent::Redraw => {
                     self.renderer.render(id).unwrap();
                 }
                 _ => {}
-            }
+            },
             Event::EventsCleared => {
                 self.renderer.request_render();
-            },
+            }
             Event::Default => {}
         }
     }
@@ -81,7 +86,12 @@ impl<B> Instance<B> where
         let scheduler = Scheduler::new();
         let main_worker = scheduler.new_worker();
         main_event_loop.run(|target, event, flow| {
-            main_worker.spawn(async {});
+            println!("Hallo");
+            for i in 0..10 {
+                main_worker.spawn(async {
+                    println!("Hallo!");
+                });
+            }
         })
     }
 }

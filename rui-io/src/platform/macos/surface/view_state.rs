@@ -1,40 +1,29 @@
-use std::cell::RefCell;
-use std::ptr::NonNull;
-use std::rc::Rc;
-use std::sync::Arc;
+use crate::platform::event::Queue;
+use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
 use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize, NSUInteger};
-use objc::runtime::{BOOL, NO, Object, Sel, YES};
-use crate::event::LoopTarget;
-use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
+use objc::runtime::{Sel, BOOL, NO, YES};
 
-pub struct ViewState<'main, 'child> {
+pub struct ViewState {
     ns_window: id,
     ime_position: (f64, f64),
-    loop_target: LoopTarget<'main, 'child>
+    queue: Queue,
 }
-impl<'main, 'child> ViewState<'main, 'child> {
-
-    pub fn new(ns_window: id, loop_target: LoopTarget<'main, 'child>) -> Self {
+impl ViewState {
+    pub fn new(ns_window: id, queue: Queue) -> Self {
         ViewState {
             ns_window,
             ime_position: (0.0, 0.0),
-            loop_target
+            queue,
         }
     }
 
-    pub fn view_did_move_to_window(&mut self) {
+    pub fn view_did_move_to_window(&mut self) {}
 
-    }
+    pub fn frame_did_change(&mut self) {}
 
-    pub fn frame_did_change(&mut self) {
-
-    }
-
-    pub fn draw_rect(&mut self, rect: NSRect) {
-
-    }
+    pub fn draw_rect(&mut self, rect: NSRect) {}
 
     pub fn accepts_first_responder(&mut self) -> BOOL {
         YES
@@ -44,14 +33,10 @@ impl<'main, 'child> ViewState<'main, 'child> {
         NO
     }
 
-    pub fn reset_cursor_rects(&mut self) {
-
-    }
+    pub fn reset_cursor_rects(&mut self) {}
 
     pub fn has_marked_text(&mut self, marked_text: id) -> BOOL {
-        unsafe {
-            (marked_text.length() > 0) as BOOL
-        }
+        unsafe { (marked_text.length() > 0) as BOOL }
     }
 
     pub fn marked_range(&mut self, marked_text: id) -> NSRange {
@@ -67,14 +52,11 @@ impl<'main, 'child> ViewState<'main, 'child> {
         NSRange::EMPTY_RANGE
     }
 
-    pub fn set_marked_text(
-        &mut self,
-        marked_text_mut: &mut id,
-        string: id
-    ) {
+    pub fn set_marked_text(&mut self, marked_text_mut: &mut id, string: id) {
         let _: () = unsafe { msg_send![(*marked_text_mut), release] };
         let marked_text = unsafe { NSMutableAttributedString::alloc(nil) };
-        let has_attr: BOOL = unsafe { msg_send![string, isKindOfClass: class!(NSAttributedString)] };
+        let has_attr: BOOL =
+            unsafe { msg_send![string, isKindOfClass: class!(NSAttributedString)] };
         if has_attr != NO {
             unsafe { marked_text.initWithAttributedString(string) };
         } else {
@@ -104,8 +86,7 @@ impl<'main, 'child> ViewState<'main, 'child> {
 
     pub fn first_rect_for_character_range(&mut self) -> NSRect {
         let frame = unsafe { NSWindow::frame(self.ns_window) };
-        let content_rect =
-            unsafe { NSWindow::contentRectForFrameRect_(self.ns_window, frame) };
+        let content_rect = unsafe { NSWindow::contentRectForFrameRect_(self.ns_window, frame) };
         let base_x = content_rect.origin.x as f64;
         let base_y = (content_rect.origin.y + content_rect.size.height) as f64;
         let x = base_x + self.ime_position.0;
@@ -114,95 +95,51 @@ impl<'main, 'child> ViewState<'main, 'child> {
         NSRect::new(NSPoint::new(x as _, y as _), NSSize::new(0.0, 0.0))
     }
 
-    pub fn insert_text(&mut self, string: id) {
+    pub fn insert_text(&mut self, string: id) {}
 
-    }
+    pub fn do_command_by_selector(&mut self, command: Sel) {}
 
-    pub fn do_command_by_selector(&mut self, command: Sel) {
+    pub fn key_down(&mut self, event: id) {}
 
-    }
+    pub fn key_up(&mut self, event: id) {}
 
-    pub fn key_down(&mut self, event: id) {
+    pub fn flags_changed(&mut self, event: id) {}
 
-    }
+    pub fn insert_tab(&mut self) {}
 
-    pub fn key_up(&mut self, event: id) {
-
-    }
-
-    pub fn flags_changed(&mut self, event: id) {
-
-    }
-
-    pub fn insert_tab(&mut self) {
-
-    }
-
-    pub fn insert_back_tab(&mut self) {
-
-    }
+    pub fn insert_back_tab(&mut self) {}
 
     // Allows us to receive Cmd-. (the shortcut for closing a dialog)
     // https://bugs.eclipse.org/bugs/show_bug.cgi?id=300620#c6
-    pub fn cancel_operation(&mut self) {
+    pub fn cancel_operation(&mut self) {}
 
-    }
+    pub fn mouse_down(&mut self, event: id) {}
 
-    pub fn mouse_down(&mut self, event: id) {
+    pub fn mouse_up(&mut self, event: id) {}
 
-    }
+    pub fn right_mouse_down(&mut self, event: id) {}
 
-    pub fn mouse_up(&mut self, event: id) {
+    pub fn right_mouse_up(&mut self, event: id) {}
 
-    }
+    pub fn other_mouse_down(&mut self, event: id) {}
 
-    pub fn right_mouse_down(&mut self, event: id) {
+    pub fn other_mouse_up(&mut self, event: id) {}
 
-    }
+    pub fn mouse_moved(&mut self, event: id) {}
 
-    pub fn right_mouse_up(&mut self, event: id) {
+    pub fn mouse_dragged(&mut self, event: id) {}
 
-    }
+    pub fn right_mouse_dragged(&mut self, event: id) {}
 
-    pub fn other_mouse_down(&mut self, event: id) {
+    pub fn other_mouse_dragged(&mut self, event: id) {}
 
-    }
+    pub fn mouse_entered(&mut self) {}
 
-    pub fn other_mouse_up(&mut self, event: id) {
+    pub fn mouse_exited(&mut self) {}
 
-    }
+    pub fn scroll_wheel(&mut self, event: id) {}
 
-    pub fn mouse_moved(&mut self, event: id) {
-
-    }
-
-    pub fn mouse_dragged(&mut self, event: id) {
-
-    }
-
-    pub fn right_mouse_dragged(&mut self, event: id) {
-
-    }
-
-    pub fn other_mouse_dragged(&mut self, event: id) {
-
-    }
-
-    pub fn mouse_entered(&mut self) {
-
-    }
-
-    pub fn mouse_exited(&mut self) {
-
-    }
-
-    pub fn scroll_wheel(&mut self, event: id) {
-
-    }
-
-    pub fn pressure_change_with_event(&mut self, event: id) {
-
-    }
+    pub fn pressure_change_with_event(&mut self, event: id) {}
 
     // Allows us to receive Ctrl-Tab and Ctrl-Esc.
     // Note that this *doesn't* help with any missing Cmd inputs.

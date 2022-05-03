@@ -14,7 +14,11 @@ impl InnerLoop for Loop {
         todo!()
     }
 
-    fn process(&self, _: &Flow) -> VecDeque<Event> {
+    fn init(&mut self) {
+        todo!()
+    }
+
+    fn process(&mut self, flow: &Flow) -> VecDeque<Event> {
         todo!()
     }
 }

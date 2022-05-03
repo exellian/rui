@@ -1,10 +1,10 @@
-use alloc::borrow::Cow;
-use rui_io::OsError;
-use rui_io::surface::SurfaceBuilder;
-use rui_util::Extent;
-use crate::Backend;
 use crate::instance::Instance;
 use crate::surface::Surface;
+use crate::Backend;
+use alloc::borrow::Cow;
+use rui_io::surface::SurfaceBuilder;
+use rui_io::OsError;
+use rui_util::Extent;
 
 pub struct Builder<'a> {
     inner: SurfaceBuilder<'a>,
@@ -12,7 +12,7 @@ pub struct Builder<'a> {
 impl<'a> Builder<'a> {
     pub fn new() -> Self {
         Builder {
-            inner: SurfaceBuilder::new()
+            inner: SurfaceBuilder::new(),
         }
     }
 
@@ -29,7 +29,10 @@ impl<'a> Builder<'a> {
 
     //TODO add more properties to builder
 
-    pub fn build<B>(self) -> Result<Surface, OsError> where B: Backend {
+    pub fn build<B>(self) -> Result<Surface, OsError>
+    where
+        B: Backend,
+    {
         todo!()
     }
 }

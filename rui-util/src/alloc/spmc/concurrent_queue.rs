@@ -5,12 +5,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 pub struct ConcurrentQueue<T> {
     head: AtomicUsize,
     tail: AtomicUsize,
-    buffer: Box<[UnsafeCell<MaybeUninit<T>>]>
+    buffer: Box<[UnsafeCell<MaybeUninit<T>>]>,
 }
 impl<T> ConcurrentQueue<T> {
-
     pub fn new(size: usize) -> Self {
-
         let mut buffer = Vec::with_capacity(size);
         for _ in 0..size {
             buffer.push(UnsafeCell::new(MaybeUninit::uninit()));
@@ -19,7 +17,7 @@ impl<T> ConcurrentQueue<T> {
         ConcurrentQueue {
             head: AtomicUsize::new(0),
             tail: AtomicUsize::new(0),
-            buffer: buffer.into_boxed_slice()
+            buffer: buffer.into_boxed_slice(),
         }
     }
 
@@ -28,7 +26,7 @@ impl<T> ConcurrentQueue<T> {
             let head = self.head.load(Ordering::Acquire);
             // Don't overtake the tail position
             if head == self.tail.load(Ordering::Acquire) {
-                return None
+                return None;
             } else {
                 // Optimistically read the value.
                 // Maybe this value is already uninit
@@ -36,14 +34,17 @@ impl<T> ConcurrentQueue<T> {
                 let res = unsafe { self.buffer[head % self.buffer.len()].get().read() };
                 let new_head = head.wrapping_add(1);
 
-                match self.head.compare_exchange_weak(head, new_head, Ordering::Release, Ordering::Relaxed) {
+                match self.head.compare_exchange_weak(
+                    head,
+                    new_head,
+                    Ordering::Release,
+                    Ordering::Relaxed,
+                ) {
                     // In this case no other thread took the value and therefore we can return it.
                     // We still have to make the read operation of this value before the compare and exchange
                     // because even if no other stealer thread got the value, the value could get overwritten
                     // by the producer thread in the meantime
-                    Ok(_) => return Some(unsafe {
-                        res.assume_init()
-                    }),
+                    Ok(_) => return Some(unsafe { res.assume_init() }),
                     // In this case either the exchange function failed or the value did get taken by a different thread
                     // because the head value was not the same anymore
                     Err(_) => {}
@@ -74,8 +75,12 @@ impl<T> ConcurrentQueue<T> {
         // => we can still insert safely
         let head = self.head.load(Ordering::Acquire);
         if (tail.wrapping_sub(head) as usize) < self.buffer.len() {
-
-            self.buffer[tail % self.buffer.len()].get().as_mut().unwrap().as_mut_ptr().write(x);
+            self.buffer[tail % self.buffer.len()]
+                .get()
+                .as_mut()
+                .unwrap()
+                .as_mut_ptr()
+                .write(x);
             let new_tail = tail.wrapping_add(1);
 
             // Because we are on a single thread this operation

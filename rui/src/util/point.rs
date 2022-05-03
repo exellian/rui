@@ -1,1 +1,1 @@
-pub type Point2D = [f32;2];
+pub type Point2D = [f32; 2];

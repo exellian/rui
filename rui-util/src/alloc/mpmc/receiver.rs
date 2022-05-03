@@ -4,7 +4,6 @@ use std::sync::Arc;
 pub struct Receiver<T>(Arc<crossbeam::queue::SegQueue<T>>);
 
 impl<T> Receiver<T> {
-
     pub fn new(queue: Arc<crossbeam::queue::SegQueue<T>>) -> Self {
         Receiver(queue)
     }

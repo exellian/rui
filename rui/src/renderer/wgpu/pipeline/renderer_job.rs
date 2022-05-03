@@ -1,27 +1,38 @@
-use std::marker::PhantomData;
-use std::sync::Arc;
-use crate::{Backend, Node};
 use crate::node::base::BaseNode;
 use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
-use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
-use crate::util::{Flags, PathSegment, Rect};
-use async_recursion::async_recursion;
-use rui_util::Extent;
 use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
+use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
 use crate::renderer::wgpu::primitive;
 use crate::surface::Surface;
+use crate::util::{Flags, PathSegment, Rect};
+use crate::{Backend, Node};
+use async_recursion::async_recursion;
+use rui_util::Extent;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-pub struct RenderJob<B> where B: Backend {
+pub struct RenderJob<B>
+where
+    B: Backend,
+{
     pub(crate) config: wgpu::SurfaceConfiguration,
     pub(crate) surface_adapter: Arc<Surface>,
     pub(crate) surface: wgpu::Surface,
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
     pub(crate) path_pipeline: PathPipeline,
-    _b: PhantomData<B>
+    _b: PhantomData<B>,
 }
-impl<B> RenderJob<B> where B: Backend {
-    pub(crate) fn new(device: &wgpu::Device, config: wgpu::SurfaceConfiguration, surface_adapter: Arc<Surface>, surface: wgpu::Surface) -> Self {
+impl<B> RenderJob<B>
+where
+    B: Backend,
+{
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        config: wgpu::SurfaceConfiguration,
+        surface_adapter: Arc<Surface>,
+        surface: wgpu::Surface,
+    ) -> Self {
         let rect_pipeline = RectPipeline::new(device, &config);
         let image_pipeline = ImagePipeline::new(device, &config);
         let path_pipeline = PathPipeline::new(device, &config);
@@ -32,27 +43,32 @@ impl<B> RenderJob<B> where B: Backend {
             rect_pipeline,
             image_pipeline,
             path_pipeline,
-            _b: PhantomData
+            _b: PhantomData,
         }
     }
 
     //Calculate rect of primitive element
     fn rect(parent: &Rect, base: &BaseNode) -> Rect {
         //debug_assert!(parent.intersect(&base.bounding_rect).is_some());
-        let mut width = base.bounding_rect.extent.width.clamp(0, (parent.extent.width as i32 - base.bounding_rect.offset.x) as u32);
-        let mut height = base.bounding_rect.extent.height.clamp(0, (parent.extent.height as i32 - base.bounding_rect.offset.y) as u32);
+        let mut width = base.bounding_rect.extent.width.clamp(
+            0,
+            (parent.extent.width as i32 - base.bounding_rect.offset.x) as u32,
+        );
+        let mut height = base.bounding_rect.extent.height.clamp(
+            0,
+            (parent.extent.height as i32 - base.bounding_rect.offset.y) as u32,
+        );
         if base.flags.test(Flags::AUTO_WIDTH) {
-            width = (parent.extent.width as i32 - base.bounding_rect.offset.x).clamp(0, i32::MAX) as u32;
+            width = (parent.extent.width as i32 - base.bounding_rect.offset.x).clamp(0, i32::MAX)
+                as u32;
         }
         if base.flags.test(Flags::AUTO_HEIGHT) {
-            height = (parent.extent.height as i32 - base.bounding_rect.offset.y).clamp(0, i32::MAX) as u32;
+            height = (parent.extent.height as i32 - base.bounding_rect.offset.y).clamp(0, i32::MAX)
+                as u32;
         }
         Rect {
             offset: base.bounding_rect.offset.clone(),
-            extent: Extent {
-                width,
-                height
-            }
+            extent: Extent { width, height },
         }
     }
 
@@ -62,18 +78,23 @@ impl<B> RenderJob<B> where B: Backend {
     // Or event optimize node graph to completely get rid of it
 
     #[async_recursion]
-    async fn flatten(root: &Rect, parent: &Rect, node: &mut Node, rects: &mut Vec<primitive::Rect>, images: &mut Vec<primitive::Image>, paths: &mut Vec<primitive::Path>) {
+    async fn flatten(
+        root: &Rect,
+        parent: &Rect,
+        node: &mut Node,
+        rects: &mut Vec<primitive::Rect>,
+        images: &mut Vec<primitive::Image>,
+        paths: &mut Vec<primitive::Path>,
+    ) {
         match node {
-            Node::Rectangle(base) => {
-                rects.push(primitive::Rect {
-                    rect: Self::rect(parent, base).norm(root),
-                    color: base.background.as_raw(),
-                    radii: base.border_radii
-                })
-            },
+            Node::Rectangle(base) => rects.push(primitive::Rect {
+                rect: Self::rect(parent, base).norm(root),
+                color: base.background.as_raw(),
+                radii: base.border_radii,
+            }),
             Node::Border(base, b) => {
                 Self::flatten(root, parent, b.node_mut(), rects, images, paths).await;
-            },
+            }
             Node::Path(base, p) => {
                 let mut segments = Vec::with_capacity(p.segments().len());
                 let mut from = p.from();
@@ -88,7 +109,7 @@ impl<B> RenderJob<B> where B: Backend {
                                 param0: start,
                                 param1: *to,
                                 param2: [0.0, 0.0],
-                                param3: [0.0, 0.0]
+                                param3: [0.0, 0.0],
                             }
                         }
                         PathSegment::Arc { to, radii } => {
@@ -106,36 +127,34 @@ impl<B> RenderJob<B> where B: Backend {
                                 param0: start,
                                 param1: params[0],
                                 param2: params[1],
-                                param3: *to
+                                param3: *to,
                             }
                         }
-                        PathSegment::CatmullRom => panic!()
+                        PathSegment::CatmullRom => panic!(),
                     });
                 }
                 paths.push(primitive::Path {
                     rect: Self::rect(parent, base).norm(root),
                     color: base.background.as_raw(),
-                    segments
+                    segments,
                 })
-            },
+            }
             Node::Composition(_, c) => {
                 for node in c.layers_mut() {
                     Self::flatten(root, parent, node, rects, images, paths).await;
                 }
-            },
-            Node::Image(base, i) => {
-                images.push(primitive::Image {
-                    instance: primitive::Instance {
-                        rect: Self::rect(parent, base).norm(root),
-                        color: base.background.as_raw(),
-                        radii: base.border_radii
-                    },
-                    resource: i.resource().clone()
-                })
-            },
+            }
+            Node::Image(base, i) => images.push(primitive::Image {
+                instance: primitive::Instance {
+                    rect: Self::rect(parent, base).norm(root),
+                    color: base.background.as_raw(),
+                    radii: base.border_radii,
+                },
+                resource: i.resource().clone(),
+            }),
             Node::Text(_, t) => {
                 todo!()
-            },
+            }
             Node::Component(_, c) => {
                 let mut node = c.node().await;
                 Self::flatten(root, parent, &mut node, rects, images, paths).await;
@@ -143,7 +162,12 @@ impl<B> RenderJob<B> where B: Backend {
         }
     }
 
-    pub(crate) async fn mount(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, node: &mut Node) {
+    pub(crate) async fn mount(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        node: &mut Node,
+    ) {
         let mut rects = vec![];
         let mut images = vec![];
         let mut paths = vec![];

@@ -1,7 +1,3 @@
 use glyph_brush::GlyphCruncher;
 
-fn main() {
-
-
-
-}
+fn main() {}

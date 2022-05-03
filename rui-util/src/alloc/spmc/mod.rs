@@ -1,10 +1,10 @@
-mod sender;
-mod receiver;
 mod concurrent_queue;
+mod receiver;
+mod sender;
 
-use std::sync::Arc;
-pub use sender::Sender;
 pub use receiver::Receiver;
+pub use sender::Sender;
+use std::sync::Arc;
 
 pub fn channel<T>(size: usize) -> (Sender<T>, Receiver<T>) {
     let queue = Arc::new(concurrent_queue::ConcurrentQueue::new(size));

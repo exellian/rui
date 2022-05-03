@@ -1,15 +1,18 @@
-use std::error::Error;
-use std::fmt::Debug;
-use std::sync::Arc;
 use crate::node::Node;
+use crate::surface::Surface;
+use crate::Backend;
 use async_trait::async_trait;
 use rui_io::surface::SurfaceId;
 use rui_util::Extent;
-use crate::Backend;
-use crate::surface::Surface;
+use std::error::Error;
+use std::fmt::Debug;
+use std::sync::Arc;
 
 #[async_trait]
-pub trait Renderer<B> where B: Backend {
+pub trait Renderer<B>
+where
+    B: Backend,
+{
     type Error: Error + Debug;
 
     async fn mount(&mut self, surface: Arc<Surface>, node: &mut Node) -> Result<(), Self::Error>;

@@ -1,59 +1,56 @@
+use crate::renderer::wgpu::primitive;
 use std::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu_types::BufferUsages;
-use crate::renderer::wgpu::primitive;
 
 pub struct RectPipeline {
     pipeline: wgpu::RenderPipeline,
     globals_buffer: wgpu::Buffer,
     globals_bind_group: wgpu::BindGroup,
     instance_count: usize,
-    instance_buffer: Option<wgpu::Buffer>
+    instance_buffer: Option<wgpu::Buffer>,
 }
 impl RectPipeline {
-
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
-
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
 
         let globals_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("globals_buffer"),
             contents: bytemuck::cast_slice(&[globals]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let globals_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("globals_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let globals_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("globals_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
-                    count: None
-                }
-            ]
-        });
+                    count: None,
+                }],
+            });
 
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: globals_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: globals_buffer.as_entire_binding(),
+            }],
             label: Some("globals_bind_group"),
         });
 
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: None,
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../../shader/rect.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../../../../shader/rect.wgsl"
+            ))),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -89,13 +86,13 @@ impl RectPipeline {
             globals_buffer,
             globals_bind_group,
             instance_count: 0,
-            instance_buffer: None
+            instance_buffer: None,
         }
     }
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
     }
@@ -122,7 +119,7 @@ impl RectPipeline {
         self.instance_buffer = Some(device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(rects),
-            usage: BufferUsages::VERTEX
+            usage: BufferUsages::VERTEX,
         }));
         self.instance_count = rects.len();
     }

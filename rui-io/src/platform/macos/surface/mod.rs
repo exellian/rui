@@ -1,38 +1,40 @@
+mod class;
 mod delegate_class;
 mod delegate_state;
-mod class;
 mod view_class;
 mod view_state;
 
-use std::marker::PhantomData;
-use std::os::raw::c_void;
-use std::sync::atomic::{AtomicU64, Ordering};
-use cocoa::appkit::{CGFloat, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
-use cocoa::base::{id, nil};
-use cocoa::foundation::{NSPoint, NSRect, NSSize};
-use objc::rc::autoreleasepool;
-use objc::runtime::{BOOL, NO};
-use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
-use crate::surface::{SurfaceAttributes, SurfaceId};
-use class::Class as WindowClass;
-use delegate_state::DelegateState as WindowDelegateState;
-use delegate_class::DelegateClass as WindowDelegateClass;
-use view_class::ViewClass as WindowViewClass;
 use crate::event::LoopTarget;
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
+use crate::surface::{SurfaceAttributes, SurfaceId};
+use class::Class as WindowClass;
+use cocoa::appkit::{CGFloat, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
+use cocoa::base::{id, nil};
+use cocoa::foundation::{NSPoint, NSRect, NSSize};
+use delegate_class::DelegateClass as WindowDelegateClass;
+use delegate_state::DelegateState as WindowDelegateState;
+use objc::rc::autoreleasepool;
+use objc::runtime::{BOOL, NO};
+use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
+use std::marker::PhantomData;
+use std::os::raw::c_void;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
+use view_class::ViewClass as WindowViewClass;
 
 pub struct Surface<'main, 'child> {
     id: SurfaceId,
     ns_window: id,
     ns_view: id,
-    view_state: Box<ViewState<'main, 'child>>,
-    delegate_state: Box<DelegateState<'main, 'child>>,
+    ns_window_delegate: id,
+    view_state: Pin<Box<ViewState>>,
+    window_delegate_state: Pin<Box<DelegateState>>,
+    loop_target: LoopTarget<'main, 'child>,
     // Ensure that the window cannot be send between threads
-    _non_send: PhantomData<*const ()>
+    _non_send: PhantomData<*const ()>,
 }
 impl<'main, 'child> Surface<'main, 'child> {
-
     pub fn new(loop_target: &LoopTarget<'main, 'child>, attr: &SurfaceAttributes) -> Self {
         let is_main_thread: BOOL = unsafe { msg_send![class!(NSThread), isMainThread] };
         if is_main_thread == NO {
@@ -43,12 +45,19 @@ impl<'main, 'child> Surface<'main, 'child> {
             static ref WINDOW_VIEW_CLASS: WindowViewClass = WindowViewClass::new();
             static ref WINDOW_DELEGATE_CLASS: WindowDelegateClass = WindowDelegateClass::new();
         }
+        let main_loop = match loop_target {
+            LoopTarget::Main(ml) => *ml,
+            LoopTarget::Child(child) => child.main,
+        };
         static IDS: AtomicU64 = AtomicU64::new(0);
         let id = IDS.fetch_add(1, Ordering::Acquire);
         let ns_window = autoreleasepool(|| {
             let frame = NSRect::new(
                 NSPoint::new(attr.position.x as CGFloat, attr.position.y as CGFloat),
-                NSSize::new(attr.current_size.width as CGFloat, attr.current_size.height as CGFloat)
+                NSSize::new(
+                    attr.current_size.width as CGFloat,
+                    attr.current_size.height as CGFloat,
+                ),
             );
             let mut style = NSWindowStyleMask::empty();
             if !attr.title.is_empty() {
@@ -70,7 +79,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                     frame,
                     style,
                     NSBackingStoreBuffered,
-                    NO
+                    NO,
                 );
             }
             if ns_window != nil {
@@ -79,7 +88,7 @@ impl<'main, 'child> Surface<'main, 'child> {
             ns_window
         });
         // NSView creation
-        let view_state = Box::new(ViewState::new(ns_window, loop_target.clone()));
+        let view_state = Box::pin(ViewState::new(ns_window, main_loop.inner.queue.clone()));
         let view_ptr = &*view_state as *const ViewState as *const c_void;
         let ns_view_alloc: id = unsafe { msg_send![WINDOW_CLASS.as_objc_class(), alloc] };
         let ns_view: id = unsafe { msg_send![ns_view_alloc, initWithState: view_ptr] };
@@ -87,20 +96,33 @@ impl<'main, 'child> Surface<'main, 'child> {
         unsafe { ns_window.setInitialFirstResponder_(ns_view) };
 
         // Window Delegate creation
-        let delegate_state = Box::new(WindowDelegateState::new(ns_window, ns_view, loop_target.clone()));
-        let delegate_state_ptr = &*delegate_state as *const DelegateState as *const c_void;
-        let window_delegate_alloc: id = unsafe { msg_send![WINDOW_DELEGATE_CLASS.as_objc_class(), alloc] };
-        let window_delegate: id = unsafe { msg_send![window_delegate_alloc, initWithState: delegate_state_ptr] };
-        unsafe { ns_window.setDelegate_(window_delegate) };
+        let mut window_delegate_state = Box::pin(WindowDelegateState::new(
+            ns_window,
+            ns_view,
+            main_loop.inner.queue.clone(),
+        ));
+        let window_delegate_state_ptr =
+            unsafe { window_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
+        let ns_window_delegate_alloc: id =
+            unsafe { msg_send![WINDOW_DELEGATE_CLASS.as_objc_class(), alloc] };
+        let ns_window_delegate: id = unsafe {
+            msg_send![
+                ns_window_delegate_alloc,
+                initWithState: window_delegate_state_ptr
+            ]
+        };
+        unsafe { ns_window.setDelegate_(ns_window_delegate) };
 
         // window creation
         let window = Surface {
             id: SurfaceId::from(id),
             ns_window,
             ns_view,
+            ns_window_delegate,
             view_state,
-            delegate_state,
-            _non_send: PhantomData
+            window_delegate_state,
+            loop_target: loop_target.clone(),
+            _non_send: PhantomData,
         };
 
         window

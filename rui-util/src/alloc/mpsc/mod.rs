@@ -1,9 +1,9 @@
-mod sender;
 mod receiver;
+mod sender;
 
-use crossbeam::channel;
 use crate::alloc::mpsc::receiver::Receiver;
 use crate::alloc::mpsc::sender::Sender;
+use crossbeam::channel;
 
 pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
     let (s, r) = channel::unbounded();

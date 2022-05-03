@@ -1,9 +1,9 @@
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance {
-    pub rect: [f32;4],
-    pub color: [f32;4],
-    pub radii: [f32;4]
+    pub rect: [f32; 4],
+    pub color: [f32; 4],
+    pub radii: [f32; 4],
 }
 impl Instance {
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {

@@ -4,11 +4,8 @@ pub struct ImageNode {
     resource: Resource,
 }
 impl ImageNode {
-
     pub fn new(resource: Resource) -> Self {
-        ImageNode {
-            resource
-        }
+        ImageNode { resource }
     }
 
     pub fn resource(&self) -> &Resource {

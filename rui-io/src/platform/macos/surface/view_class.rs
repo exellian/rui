@@ -1,20 +1,19 @@
 use std::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use std::os::raw::c_void;
-use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
 use cocoa::appkit::NSTabView;
 use cocoa::base::{id, nil, YES};
 use cocoa::foundation::{NSPoint, NSRect, NSString, NSUInteger};
-use dispatch::Once;
 use objc::declare::ClassDecl;
-use objc::runtime::{BOOL, Class, Object, Protocol, Sel};
+use objc::runtime::{Class, Object, Protocol, Sel, BOOL};
+
 use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
 use crate::platform::platform::surface::view_state::ViewState;
 
 pub struct ViewClass(&'static Class);
 impl ViewClass {
-
     const STATE_IVAR_NAME: &'static str = "_state";
 
     pub fn new() -> Self {
@@ -23,7 +22,10 @@ impl ViewClass {
         let class = unsafe {
             let superclass = class!(NSView);
             let mut decl = ClassDecl::new(format!("View{}", id).as_str(), superclass).unwrap();
-            decl.add_method(sel!(dealloc), Self::dealloc as extern "C" fn(&mut Object, Sel));
+            decl.add_method(
+                sel!(dealloc),
+                Self::dealloc as extern "C" fn(&mut Object, Sel),
+            );
             decl.add_method(
                 sel!(initWithState:),
                 Self::init_with_state as extern "C" fn(&mut Object, Sel, *mut c_void) -> id,
@@ -64,7 +66,10 @@ impl ViewClass {
                 sel!(setMarkedText:selectedRange:replacementRange:),
                 Self::set_marked_text as extern "C" fn(&mut Object, Sel, id, NSRange, NSRange),
             );
-            decl.add_method(sel!(unmarkText), Self::unmark_text as extern "C" fn(&mut Object, Sel));
+            decl.add_method(
+                sel!(unmarkText),
+                Self::unmark_text as extern "C" fn(&mut Object, Sel),
+            );
             decl.add_method(
                 sel!(validAttributesForMarkedText),
                 Self::valid_attributes_for_marked_text as extern "C" fn(&mut Object, Sel) -> id,
@@ -80,7 +85,8 @@ impl ViewClass {
             );
             decl.add_method(
                 sel!(characterIndexForPoint:),
-                Self::character_index_for_point as extern "C" fn(&mut Object, Sel, NSPoint) -> NSUInteger,
+                Self::character_index_for_point
+                    as extern "C" fn(&mut Object, Sel, NSPoint) -> NSUInteger,
             );
             decl.add_method(
                 sel!(firstRectForCharacterRange:actualRange:),
@@ -91,8 +97,14 @@ impl ViewClass {
                 sel!(doCommandBySelector:),
                 Self::do_command_by_selector as extern "C" fn(&mut Object, Sel, Sel),
             );
-            decl.add_method(sel!(keyDown:), Self::key_down as extern "C" fn(&mut Object, Sel, id));
-            decl.add_method(sel!(keyUp:), Self::key_up as extern "C" fn(&mut Object, Sel, id));
+            decl.add_method(
+                sel!(keyDown:),
+                Self::key_down as extern "C" fn(&mut Object, Sel, id),
+            );
+            decl.add_method(
+                sel!(keyUp:),
+                Self::key_up as extern "C" fn(&mut Object, Sel, id),
+            );
             decl.add_method(
                 sel!(flagsChanged:),
                 Self::flags_changed as extern "C" fn(&mut Object, Sel, id),
@@ -109,7 +121,10 @@ impl ViewClass {
                 sel!(mouseDown:),
                 Self::mouse_down as extern "C" fn(&mut Object, Sel, id),
             );
-            decl.add_method(sel!(mouseUp:), Self::mouse_up as extern "C" fn(&mut Object, Sel, id));
+            decl.add_method(
+                sel!(mouseUp:),
+                Self::mouse_up as extern "C" fn(&mut Object, Sel, id),
+            );
             decl.add_method(
                 sel!(rightMouseDown:),
                 Self::right_mouse_down as extern "C" fn(&mut Object, Sel, id),
@@ -189,7 +204,10 @@ impl ViewClass {
 
     // borrows individual fields of object as mut
 
-    fn get_fields_mut<'a, const SIZE: usize>(object: &'a mut Object, fields: [&str; SIZE]) -> [&'a mut id;SIZE] {
+    fn get_fields_mut<'a, const SIZE: usize>(
+        object: &'a mut Object,
+        fields: [&str; SIZE],
+    ) -> [&'a mut id; SIZE] {
         let object_ref_cell = UnsafeCell::new(object);
         let mut rets: [MaybeUninit<&mut id>; SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
         for i in 0..SIZE {
@@ -199,25 +217,24 @@ impl ViewClass {
         rets.map(|v| unsafe { v.assume_init() })
     }
 
-    unsafe fn cast_state_mut<'main, 'child>(state: &mut id) -> &mut ViewState<'main, 'child> {
+    unsafe fn cast_state_mut(state: &mut id) -> &mut ViewState {
         let state_ptr: *mut c_void = *state as *mut _;
         &mut *(state_ptr as *mut ViewState)
     }
 
-    unsafe fn get_state_mut<'main, 'child>(object: &mut Object) -> &mut ViewState<'main, 'child> {
-        Self::cast_state_mut(
-            object.get_mut_ivar(Self::STATE_IVAR_NAME)
-        )
+    unsafe fn get_state_mut(object: &mut Object) -> &mut ViewState {
+        Self::cast_state_mut(object.get_mut_ivar(Self::STATE_IVAR_NAME))
     }
 
     /// User must ensure that the fields exist and that no field gets borrowed twice or more times.
-    unsafe fn get_state_and_fields_mut<'main, 'child, 'a, const SIZE: usize>(object: &'a mut Object, fields: [&str; SIZE]) -> (&'a mut ViewState<'main, 'child>, [&'a mut id;SIZE]) {
+    unsafe fn get_state_and_fields_mut<'a, const SIZE: usize>(
+        object: &'a mut Object,
+        fields: [&str; SIZE],
+    ) -> (&'a mut ViewState, [&'a mut id; SIZE]) {
         let object_ref_cell = UnsafeCell::new(object);
         let state = Self::get_state_mut(*object_ref_cell.get() as &mut _);
-        let fields_mut = Self::get_fields_mut(
-            unsafe { *object_ref_cell.get() as &mut Object },
-            fields
-        );
+        let fields_mut =
+            Self::get_fields_mut(unsafe { *object_ref_cell.get() as &mut Object }, fields);
         (state, fields_mut)
     }
 
@@ -236,12 +253,15 @@ impl ViewClass {
             let this: id = msg_send![this, init];
             if this != nil {
                 (*this).set_ivar(Self::STATE_IVAR_NAME, state);
-                let marked_text = NSMutableAttributedString::init(NSMutableAttributedString::alloc(nil));
+                let marked_text =
+                    NSMutableAttributedString::init(NSMutableAttributedString::alloc(nil));
                 (*this).set_ivar("markedText", marked_text);
                 let _: () = msg_send![this, setPostsFrameChangedNotifications: YES];
 
-                let notification_center: &mut Object = msg_send![class!(NSNotificationCenter), defaultCenter];
-                let notification_name = NSString::alloc(nil).init_str("NSViewFrameDidChangeNotification");
+                let notification_center: &mut Object =
+                    msg_send![class!(NSNotificationCenter), defaultCenter];
+                let notification_name =
+                    NSString::alloc(nil).init_str("NSViewFrameDidChangeNotification");
                 let _: () = msg_send![
                     notification_center,
                     addObserver: this
@@ -279,16 +299,12 @@ impl ViewClass {
     }
 
     extern "C" fn has_marked_text(this: &mut Object, _sel: Sel) -> BOOL {
-        let (state, fields) = unsafe {
-            Self::get_state_and_fields_mut(this, ["markedText"])
-        };
+        let (state, fields) = unsafe { Self::get_state_and_fields_mut(this, ["markedText"]) };
         state.has_marked_text(*fields[0])
     }
 
     extern "C" fn marked_range(this: &mut Object, _sel: Sel) -> NSRange {
-        let (state, fields) = unsafe {
-            Self::get_state_and_fields_mut(this, ["markedText"])
-        };
+        let (state, fields) = unsafe { Self::get_state_and_fields_mut(this, ["markedText"]) };
         state.marked_range(*fields[0])
     }
 
@@ -303,16 +319,12 @@ impl ViewClass {
         _selected_range: NSRange,
         _replacement_range: NSRange,
     ) {
-        let (state, fields) = unsafe {
-            Self::get_state_and_fields_mut(this, ["markedText"])
-        };
+        let (state, fields) = unsafe { Self::get_state_and_fields_mut(this, ["markedText"]) };
         state.set_marked_text(fields[0], string);
     }
 
     extern "C" fn unmark_text(this: &mut Object, _sel: Sel) {
-        let (state, fields) = unsafe {
-            Self::get_state_and_fields_mut(this, ["markedText"])
-        };
+        let (state, fields) = unsafe { Self::get_state_and_fields_mut(this, ["markedText"]) };
         state.unmark_text(*fields[0]);
         let input_context: id = unsafe { msg_send![this, inputContext] };
         let _: () = unsafe { msg_send![input_context, discardMarkedText] };
@@ -331,7 +343,11 @@ impl ViewClass {
         unsafe { Self::get_state_mut(this) }.attributed_substring_for_proposed_range()
     }
 
-    extern "C" fn character_index_for_point(this: &mut Object, _sel: Sel, _point: NSPoint) -> NSUInteger {
+    extern "C" fn character_index_for_point(
+        this: &mut Object,
+        _sel: Sel,
+        _point: NSPoint,
+    ) -> NSUInteger {
         unsafe { Self::get_state_mut(this) }.character_index_for_point()
     }
 
@@ -344,7 +360,12 @@ impl ViewClass {
         unsafe { Self::get_state_mut(this) }.first_rect_for_character_range()
     }
 
-    extern "C" fn insert_text(this: &mut Object, _sel: Sel, string: id, _replacement_range: NSRange) {
+    extern "C" fn insert_text(
+        this: &mut Object,
+        _sel: Sel,
+        string: id,
+        _replacement_range: NSRange,
+    ) {
         unsafe { Self::get_state_mut(this) }.insert_text(string)
     }
 

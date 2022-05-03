@@ -1,8 +1,8 @@
-mod instance;
 mod backend;
 mod error;
+mod instance;
 
-pub use instance::Instance;
 pub use backend::Backend;
-pub use error::Error;
 pub use backend::*;
+pub use error::Error;
+pub use instance::Instance;

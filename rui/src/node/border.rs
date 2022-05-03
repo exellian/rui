@@ -1,14 +1,13 @@
-use crate::math::{Vec4};
+use crate::math::Vec4;
 use crate::Node;
 
 pub struct BorderNode {
     width: Vec4,
     radii: Vec4,
     inset: bool,
-    node: Box<Node>
+    node: Box<Node>,
 }
 impl BorderNode {
-
     pub fn width(&self) -> &Vec4 {
         &self.width
     }
@@ -20,7 +19,7 @@ impl BorderNode {
     pub fn inset(&self) -> bool {
         self.inset
     }
-    
+
     pub fn node(&self) -> &Node {
         &self.node
     }

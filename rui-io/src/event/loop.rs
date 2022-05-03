@@ -1,8 +1,8 @@
-use crate::event::{Event, Flow, InnerLoop};
 use crate::event::exit_code::ExitCode;
 use crate::event::loop_state::LoopStateRef;
 use crate::event::loop_target::LoopTarget;
 use crate::event::main_loop::MainLoop;
+use crate::event::{Event, Flow, InnerLoop, Queue};
 use crate::platform;
 
 /// Loop is the handle to for a child event loop. Read more about the relationship between the main
@@ -10,9 +10,8 @@ use crate::platform;
 pub struct Loop<'main> {
     /// This reference to the MainLoop is necessary because some operating system require to perform
     /// some task exclusively on the main thread.
-    pub(super) main: &'main MainLoop,
+    pub(crate) main: &'main MainLoop,
     state: LoopStateRef,
-    inner: platform::event::Loop
 }
 
 impl<'main> Loop<'main> {
@@ -27,11 +26,7 @@ impl<'main> Loop<'main> {
     ///  - [state: LoopStateRef](LoopStateRef) may be used in conjunction with [`crate::event::loop_control::LoopControl`]
     ///    to have a thread-safe way of starting and stopping the loop.
     pub fn new(main: &'main MainLoop, state: LoopStateRef) -> Self {
-        Loop {
-            main,
-            state,
-            inner: platform::event::Loop::new()
-        }
+        Loop { main, state }
     }
 
     /// Processes events and calls the callback function if necessary
@@ -40,20 +35,27 @@ impl<'main> Loop<'main> {
     ///
     ///  - [&'child mut self](mut self) Requires a mutable reference to self
     ///  // TODO!
-    pub fn run<'child>(&'child mut self, mut callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow)) -> ExitCode where 'child: 'main {
+    pub fn run<'child>(
+        self: &'child mut Self,
+        mut callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow),
+    ) -> ExitCode
+    where
+        'child: 'main,
+    {
+        let mut inner = platform::event::Loop::new();
         let mut flow = Flow::Wait;
-        let target = LoopTarget::Child(self);
+        let mut target = LoopTarget::Child(self);
         self.state.start_weak();
         let exit_code = loop {
             if let Flow::Exit(exit_code) = flow {
-                break exit_code
+                break exit_code;
             }
             if !self.state.is_running() {
-                break ExitCode::Default
+                break ExitCode::Default;
             }
-            let events = self.inner.process(&flow);
-            for event in &events {
-                callback(&target, Some(event), &mut flow);
+            let events = inner.process(&flow) as &mut dyn Queue<Event>;
+            for event in events.as_iter_mut() {
+                callback(&target, Some(&event), &mut flow);
             }
         };
         exit_code

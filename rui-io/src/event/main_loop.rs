@@ -1,36 +1,40 @@
-use std::process::exit;
-use std::sync::RwLock;
-use crate::event::{Event, Flow, InnerLoop};
 use crate::event::loop_control::LoopControl;
 use crate::event::loop_state::LoopStateRef;
 use crate::event::loop_target::LoopTarget;
-use crate::platform;
+use crate::event::queue::Queue;
+use crate::event::{Event, Flow, InnerLoop};
+use crate::{event, platform};
+use std::process::exit;
+use std::sync::RwLock;
 
 pub struct MainLoop {
     state: LoopStateRef,
     pub(super) child_loop_controls: RwLock<Vec<LoopControl>>,
-    pub(crate) inner: platform::event::MainLoop
+    pub(crate) inner: platform::event::MainLoop,
 }
 impl MainLoop {
-
     pub fn new() -> Self {
         MainLoop {
             state: LoopStateRef::new(),
             child_loop_controls: RwLock::new(vec![]),
-            inner: platform::event::MainLoop::new()
+            inner: platform::event::MainLoop::new(),
         }
     }
 
-    pub fn run<'main>(&'main mut self, mut callback: impl FnMut(&LoopTarget<'main, 'main>, Option<&Event>, &mut Flow)) -> ! {
+    pub fn run<'main>(
+        &'main mut self,
+        mut callback: impl FnMut(&LoopTarget<'main, 'main>, Option<&Event>, &mut Flow),
+    ) -> ! {
         let mut flow = Flow::Wait;
+        let mut inner = platform::event::MainLoop::new();
         let target = LoopTarget::Main(self);
         let exit_code = loop {
-            if let Flow::Exit(exit_code ) = flow {
-                break exit_code
+            if let Flow::Exit(exit_code) = flow {
+                break exit_code;
             }
-            let events = self.inner.process(&flow);
-            for event in &events {
-                callback(&target, Some(event), &mut flow);
+            let events = inner.process(&flow) as &mut dyn Queue<Event>;
+            for event in events.as_iter_mut() {
+                callback(&target, Some(&event), &mut flow);
             }
         };
         {

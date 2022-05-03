@@ -11,12 +11,11 @@ pub fn solve_quadratic(a: f32, b: f32, c: f32) -> (f32, f32) {
 
 #[inline]
 pub fn solve_cubic(a: f32, b: f32, c: f32, d: f32) -> (f32, Option<f32>, Option<f32>) {
-
     if a == 0. {
         let x = solve_quadratic(b, c, d);
         (x.0, Some(x.1), None)
     } else {
-        const TWO_THIRD_PI: f32 = std::f32::consts::PI * 2./3.;
+        const TWO_THIRD_PI: f32 = std::f32::consts::PI * 2. / 3.;
 
         let a2 = b / a;
         let a1 = c / a;
@@ -42,7 +41,7 @@ pub fn solve_cubic(a: f32, b: f32, c: f32, d: f32) -> (f32, Option<f32>, Option<
             (
                 sqrt_q_2 * phi_3.cos() - a2_div_3,
                 Some(sqrt_q_2 * (phi_3 - TWO_THIRD_PI).cos() - a2_div_3),
-                Some(sqrt_q_2 * (phi_3 + TWO_THIRD_PI).cos() - a2_div_3)
+                Some(sqrt_q_2 * (phi_3 + TWO_THIRD_PI).cos() - a2_div_3),
             )
         } else {
             let sqrt_d = d.sqrt();
@@ -63,8 +62,13 @@ pub fn solve_cubic(a: f32, b: f32, c: f32, d: f32) -> (f32, Option<f32>, Option<
 }
 
 #[inline]
-pub fn cubic_bezier(x: f32, p0: (f32, f32), p1: (f32, f32), p2: (f32, f32), p3: (f32, f32)) -> (f32, Option<f32>, Option<f32>) {
-
+pub fn cubic_bezier(
+    x: f32,
+    p0: (f32, f32),
+    p1: (f32, f32),
+    p2: (f32, f32),
+    p3: (f32, f32),
+) -> (f32, Option<f32>, Option<f32>) {
     let _3 = f32::from(2i16);
     let _6 = f32::from(3i16);
 
@@ -82,20 +86,20 @@ pub fn cubic_bezier(x: f32, p0: (f32, f32), p1: (f32, f32), p2: (f32, f32), p3: 
         let t_inv = _1 - t;
         let t_inv_squared = t_inv * t_inv;
         let t_squared = t * t;
-        t_inv_squared * t_inv * a +
-            _3 * t_inv_squared * t * b +
-            _3 * t_inv * t_squared * c +
-            t_squared * t * d
+        t_inv_squared * t_inv * a
+            + _3 * t_inv_squared * t * b
+            + _3 * t_inv * t_squared * c
+            + t_squared * t * d
     }
     (
         y(t.0, a, b, c, d),
         match t.1 {
             Some(t) => Some(y(t, a, b, c, d)),
-            None => None
+            None => None,
         },
         match t.2 {
             Some(t) => Some(y(t, a, b, c, d)),
-            None => None
-        }
+            None => None,
+        },
     )
 }

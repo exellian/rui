@@ -1,19 +1,18 @@
+use crate::scheduler::inner_worker::InnerWorker;
+use crate::scheduler::task::{JoinHandle, RawTask};
+use crate::scheduler::Scheduler;
 use std::future::Future;
 use std::ptr::NonNull;
-use crate::scheduler::inner_worker::InnerWorker;
-use crate::scheduler::Scheduler;
-use crate::scheduler::task::{JoinHandle, RawTask};
 
 pub struct Worker<'scheduler> {
-    inner: Box<InnerWorker<'scheduler>>
+    inner: Box<InnerWorker<'scheduler>>,
 }
 impl<'scheduler> Worker<'scheduler> {
-
     pub fn new(local_queue_size: usize, scheduler: &'scheduler Scheduler) -> Self {
         let worker = Worker {
-            inner: Box::new(InnerWorker::new(local_queue_size, scheduler))
+            inner: Box::new(InnerWorker::new(local_queue_size, scheduler)),
         };
-        unsafe { scheduler.register(&worker)}
+        unsafe { scheduler.register(&worker) }
         worker
     }
 
@@ -21,7 +20,10 @@ impl<'scheduler> Worker<'scheduler> {
         self.inner.id()
     }
 
-    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output> where F: Future + 'scheduler {
+    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
+    where
+        F: Future + 'scheduler,
+    {
         self.inner.spawn(task)
     }
 

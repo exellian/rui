@@ -1,14 +1,13 @@
 mod builder;
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 pub use builder::Builder as SurfaceBuilder;
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use rui_io::surface::SurfaceId;
 use rui_util::Extent;
 
 pub struct Surface(rui_io::surface::SurfaceId);
 
 impl Surface {
-
     pub fn new(surface: rui_io::surface::SurfaceId) -> Self {
         Surface(surface)
     }

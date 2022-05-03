@@ -1,21 +1,19 @@
-extern crate core;
 extern crate alloc;
+extern crate core;
 
-pub mod node;
-pub mod util;
+pub mod component;
+pub mod instance;
 pub mod math;
+pub mod node;
 pub mod renderer;
 pub mod surface;
-pub mod instance;
-pub mod component;
+pub mod util;
 
+use crate::component::context::Context;
 use crate::component::Component;
-use crate::instance::{Backend};
+use crate::instance::Backend;
 use crate::node::Node;
 use async_trait::async_trait;
-use crate::component::context::Context;
-
-
 
 /*
 impl State for Mybutton {
@@ -30,6 +28,4 @@ impl State for Mybutton {
 }
 */
 
-pub enum UserEvent {
-    
-}
+pub enum UserEvent {}

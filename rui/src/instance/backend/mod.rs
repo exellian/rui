@@ -1,5 +1,5 @@
 mod backend;
 mod wgpu;
 
-pub use backend::Backend;
 pub use self::wgpu::WGpu;
+pub use backend::Backend;

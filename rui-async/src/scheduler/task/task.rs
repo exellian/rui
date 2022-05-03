@@ -1,26 +1,30 @@
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::task::{Context, Poll};
 use crate::scheduler::task::output::Output;
 use crate::scheduler::task::Status;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::task::{Context, Poll};
 
-
-pub struct Task<F> where F: Future {
+pub struct Task<F>
+where
+    F: Future,
+{
     future: Pin<Box<F>>,
-    output: Arc<Output<F::Output>>
+    output: Arc<Output<F::Output>>,
 }
 
-impl<F> Task<F> where F: Future {
-
+impl<F> Task<F>
+where
+    F: Future,
+{
     pub fn new(future: F) -> Self {
         Task {
             future: Box::pin(future),
-            output: Arc::new(Output::new())
+            output: Arc::new(Output::new()),
         }
     }
-    
+
     pub fn output(&self) -> Arc<Output<F::Output>> {
         self.output.clone()
     }

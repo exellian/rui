@@ -1,16 +1,16 @@
-use alloc::borrow::Cow;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu_types::BufferUsages;
 use crate::renderer::wgpu::primitive;
 use crate::renderer::wgpu::primitive::Paths;
 use crate::util::PathSegment;
+use alloc::borrow::Cow;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu_types::BufferUsages;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Instance {
-    pub rect: [f32;4],
-    pub color: [f32;4],
-    pub segment_range: [u32;2]
+    pub rect: [f32; 4],
+    pub color: [f32; 4],
+    pub segment_range: [u32; 2],
 }
 impl Instance {
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
@@ -33,7 +33,7 @@ impl Instance {
                     offset: mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Uint32x2,
-                }
+                },
             ],
         }
     }
@@ -41,7 +41,7 @@ impl Instance {
 
 pub struct Path {
     path: primitive::Path,
-    buffer: wgpu::Buffer
+    buffer: wgpu::Buffer,
 }
 
 pub struct PathPipeline {
@@ -52,68 +52,64 @@ pub struct PathPipeline {
     instance_buffer: Option<wgpu::Buffer>,
     segments_buffer: Option<wgpu::Buffer>,
     segments_bind_group: Option<wgpu::BindGroup>,
-    segments_bind_group_layout: wgpu::BindGroupLayout
+    segments_bind_group_layout: wgpu::BindGroupLayout,
 }
 impl PathPipeline {
-
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
-
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
 
         let globals_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("globals_buffer"),
             contents: bytemuck::cast_slice(&[globals]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         });
 
-        let globals_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("globals_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let globals_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("globals_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
-                    count: None
-                }
-            ]
-        });
+                    count: None,
+                }],
+            });
 
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: globals_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: globals_buffer.as_entire_binding(),
+            }],
             label: Some("globals_bind_group"),
         });
 
-        let segments_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("segments_bind_group_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let segments_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("segments_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None
+                        min_binding_size: None,
                     },
-                    count: None
-                }
-            ]
-        });
+                    count: None,
+                }],
+            });
 
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: None,
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../../../../shader/path.wgsl"))),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../../../../shader/path.wgsl"
+            ))),
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -152,13 +148,13 @@ impl PathPipeline {
             instance_buffer: None,
             segments_buffer: None,
             segments_bind_group: None,
-            segments_bind_group_layout
+            segments_bind_group_layout,
         }
     }
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
-            aspect_ratio: config.width as f32 / config.height as f32
+            aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
     }
@@ -191,7 +187,7 @@ impl PathPipeline {
             instances.push(Instance {
                 rect: p.rect,
                 color: p.color,
-                segment_range: [start, index]
+                segment_range: [start, index],
             })
         }
         // Use write buffer instead of recreation in the future.
@@ -201,24 +197,22 @@ impl PathPipeline {
         self.instance_buffer = Some(device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&instances),
-            usage: BufferUsages::VERTEX
+            usage: BufferUsages::VERTEX,
         }));
         self.instance_count = instances.len();
 
         self.segments_buffer = Some(device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Segments Buffer"),
             contents: bytemuck::cast_slice(&[all_paths]),
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
         }));
 
         self.segments_bind_group = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.segments_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.segments_buffer.as_ref().unwrap().as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.segments_buffer.as_ref().unwrap().as_entire_binding(),
+            }],
             label: Some("segments_bind_group"),
         }));
     }

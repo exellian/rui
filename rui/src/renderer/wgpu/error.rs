@@ -11,9 +11,7 @@ impl Debug for Error {
             Error::AdapterNotFound => {
                 write!(f, "Adapter not found!")
             }
-            Error::DeviceCreationFailed(err) => {
-                Debug::fmt(err, f)
-            }
+            Error::DeviceCreationFailed(err) => Debug::fmt(err, f),
         }
     }
 }

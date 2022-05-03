@@ -1,4 +1,4 @@
-mod vec;
 mod tensor;
+mod vec;
 
 pub use vec::*;

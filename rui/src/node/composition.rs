@@ -1,14 +1,11 @@
 use crate::node::Node;
 
 pub struct CompositionNode {
-    layers: Vec<Node>
+    layers: Vec<Node>,
 }
 impl CompositionNode {
-
     pub fn new(layers: Vec<Node>) -> Self {
-        CompositionNode {
-            layers
-        }
+        CompositionNode { layers }
     }
 
     pub fn layers(&self) -> &Vec<Node> {

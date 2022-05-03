@@ -1,10 +1,10 @@
+use crate::scheduler::task::{JoinHandle, RawTask, Status, Task};
+use crate::scheduler::Scheduler;
+use rui_util::alloc::spmc;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Waker};
-use rui_util::alloc::spmc;
-use crate::scheduler::Scheduler;
-use crate::scheduler::task::{JoinHandle, RawTask, Status, Task};
 
 pub struct InnerWorker<'scheduler> {
     id: usize,
@@ -12,10 +12,9 @@ pub struct InnerWorker<'scheduler> {
     local_receiver: spmc::Receiver<RawTask>,
     pub(crate) scheduler: &'scheduler Scheduler,
     // Make the worker non send to ensure thread safety
-    _non_send: PhantomData<*const ()>
+    _non_send: PhantomData<*const ()>,
 }
 impl<'scheduler> InnerWorker<'scheduler> {
-
     pub(super) fn new(local_queue_size: usize, scheduler: &'scheduler Scheduler) -> Self {
         static IDS: AtomicUsize = AtomicUsize::new(0);
         let (local_sender, local_receiver) = spmc::channel(local_queue_size);
@@ -24,7 +23,7 @@ impl<'scheduler> InnerWorker<'scheduler> {
             local_sender,
             local_receiver,
             scheduler,
-            _non_send: Default::default()
+            _non_send: Default::default(),
         }
     }
 
@@ -32,10 +31,11 @@ impl<'scheduler> InnerWorker<'scheduler> {
         self.id
     }
 
-    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output> where
-        F: Future + 'scheduler
+    pub fn spawn<F>(&self, task: F) -> JoinHandle<F::Output>
+    where
+        F: Future + 'scheduler,
     {
-        let task= Task::new(task);
+        let task = Task::new(task);
         let handle = JoinHandle::new(task.output());
         // This is safe because the InnerWorker cannot outlive 'scheduler and so the tasks either
         let raw_task = unsafe { RawTask::new_unchecked(task) };
@@ -47,16 +47,16 @@ impl<'scheduler> InnerWorker<'scheduler> {
         match self.scheduler.global_receiver.try_recv() {
             None => match self.local_receiver.try_recv() {
                 None => self.scheduler.try_steal(&self.id),
-                Some(task) => Some(task)
+                Some(task) => Some(task),
             },
-            Some(task) => Some(task)
+            Some(task) => Some(task),
         }
     }
 
     fn queue_task(&mut self, task: RawTask) {
         match self.local_sender.try_send(task) {
             Ok(_) => {}
-            Err(task) => self.scheduler.global_sender.send(task)
+            Err(task) => self.scheduler.global_sender.send(task),
         }
     }
 
@@ -66,7 +66,7 @@ impl<'scheduler> InnerWorker<'scheduler> {
             Some(mut task) => match unsafe { task.poll() } {
                 Status::Pending => self.queue_task(task),
                 Status::Ready => {}
-            }
+            },
         }
     }
 

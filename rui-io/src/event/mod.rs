@@ -21,6 +21,7 @@ pub use loop_target::LoopTarget;
 
 #[derive(Clone)]
 pub enum Event {
+    Init,
     SurfaceEvent { id: SurfaceId, event: SurfaceEvent },
     EventsCleared,
     Default,

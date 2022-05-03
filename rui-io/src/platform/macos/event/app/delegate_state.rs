@@ -11,6 +11,6 @@ impl DelegateState {
     }
 
     pub fn did_finish_launching(&mut self) {
-        self.queue.enqueue(Event::Default)
+        self.queue.enqueue(Event::Init);
     }
 }

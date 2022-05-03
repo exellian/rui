@@ -32,6 +32,7 @@ impl DelegateClass {
                 sel!(applicationDidFinishLaunching:),
                 Self::did_finish_launching as extern "C" fn(&mut Object, Sel, id),
             );
+
             decl.add_ivar::<*mut c_void>(Self::STATE_IVAR_NAME);
 
             decl.register()
@@ -39,9 +40,8 @@ impl DelegateClass {
         DelegateClass(class)
     }
 
-    unsafe fn cast_state_mut(state: &mut id) -> &mut DelegateState {
-        let state_ptr: *mut c_void = *state as *mut _;
-        &mut *(state_ptr as *mut DelegateState)
+    unsafe fn cast_state_mut(state: &mut *mut c_void) -> &mut DelegateState {
+        &mut *(*state as *mut DelegateState)
     }
 
     unsafe fn get_state_mut(object: &mut Object) -> &mut DelegateState {
@@ -61,8 +61,7 @@ impl DelegateClass {
     extern "C" fn dealloc(this: &mut Object, _: Sel) {
         //
     }
-
     extern "C" fn did_finish_launching(this: &mut Object, _: Sel, _: id) {
-        unsafe { Self::get_state_mut(this) }.did_finish_launching()
+        unsafe { Self::get_state_mut(this) }.did_finish_launching();
     }
 }

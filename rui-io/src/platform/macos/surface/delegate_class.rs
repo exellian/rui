@@ -111,9 +111,8 @@ impl DelegateClass {
         &self.0
     }
 
-    unsafe fn cast_state_mut(state: &mut id) -> &mut DelegateState {
-        let state_ptr: *mut c_void = *state as *mut _;
-        &mut *(state_ptr as *mut DelegateState)
+    unsafe fn cast_state_mut(state: &mut *mut c_void) -> &mut DelegateState {
+        &mut *(*state as *mut DelegateState)
     }
 
     unsafe fn get_state_mut(object: &mut Object) -> &mut DelegateState {

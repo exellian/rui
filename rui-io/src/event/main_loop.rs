@@ -3,21 +3,22 @@ use crate::event::loop_state::LoopStateRef;
 use crate::event::loop_target::LoopTarget;
 use crate::event::queue::Queue;
 use crate::event::{Event, Flow, InnerLoop};
-use crate::{event, platform};
+use crate::platform;
+use std::cell::{Ref, RefCell};
 use std::process::exit;
 use std::sync::RwLock;
 
 pub struct MainLoop {
     state: LoopStateRef,
     pub(super) child_loop_controls: RwLock<Vec<LoopControl>>,
-    pub(crate) inner: platform::event::MainLoop,
+    pub(crate) inner: RefCell<platform::event::MainLoop>,
 }
 impl MainLoop {
     pub fn new() -> Self {
         MainLoop {
             state: LoopStateRef::new(),
             child_loop_controls: RwLock::new(vec![]),
-            inner: platform::event::MainLoop::new(),
+            inner: RefCell::new(platform::event::MainLoop::new()),
         }
     }
 
@@ -26,14 +27,18 @@ impl MainLoop {
         mut callback: impl FnMut(&LoopTarget<'main, 'main>, Option<&Event>, &mut Flow),
     ) -> ! {
         let mut flow = Flow::Wait;
-        let mut inner = platform::event::MainLoop::new();
         let target = LoopTarget::Main(self);
         let exit_code = loop {
             if let Flow::Exit(exit_code) = flow {
                 break exit_code;
             }
-            let events = inner.process(&flow) as &mut dyn Queue<Event>;
-            for event in events.as_iter_mut() {
+            let events: Vec<Event> = {
+                let mut mut_guard = self.inner.borrow_mut();
+                (mut_guard.process(&flow) as &mut dyn Queue<Event>)
+                    .as_iter_mut()
+                    .collect()
+            };
+            for event in events {
                 callback(&target, Some(&event), &mut flow);
             }
         };

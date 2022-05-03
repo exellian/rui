@@ -217,9 +217,8 @@ impl ViewClass {
         rets.map(|v| unsafe { v.assume_init() })
     }
 
-    unsafe fn cast_state_mut(state: &mut id) -> &mut ViewState {
-        let state_ptr: *mut c_void = *state as *mut _;
-        &mut *(state_ptr as *mut ViewState)
+    unsafe fn cast_state_mut(state: &mut *mut c_void) -> &mut ViewState {
+        &mut *(*state as *mut ViewState)
     }
 
     unsafe fn get_state_mut(object: &mut Object) -> &mut ViewState {

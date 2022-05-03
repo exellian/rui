@@ -88,7 +88,10 @@ impl<'main, 'child> Surface<'main, 'child> {
             ns_window
         });
         // NSView creation
-        let view_state = Box::pin(ViewState::new(ns_window, main_loop.inner.queue.clone()));
+        let view_state = Box::pin(ViewState::new(
+            ns_window,
+            main_loop.inner.borrow().queue.clone(),
+        ));
         let view_ptr = &*view_state as *const ViewState as *const c_void;
         let ns_view_alloc: id = unsafe { msg_send![WINDOW_CLASS.as_objc_class(), alloc] };
         let ns_view: id = unsafe { msg_send![ns_view_alloc, initWithState: view_ptr] };
@@ -99,7 +102,7 @@ impl<'main, 'child> Surface<'main, 'child> {
         let mut window_delegate_state = Box::pin(WindowDelegateState::new(
             ns_window,
             ns_view,
-            main_loop.inner.queue.clone(),
+            main_loop.inner.borrow().queue.clone(),
         ));
         let window_delegate_state_ptr =
             unsafe { window_delegate_state.as_mut().get_unchecked_mut() as *mut _ };

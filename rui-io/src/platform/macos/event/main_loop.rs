@@ -1,11 +1,12 @@
 use std::pin::Pin;
 
-use cocoa::appkit::NSEventMask;
+use cocoa::appkit::{NSApp, NSEventMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSDefaultRunLoopMode;
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO, YES};
 
+use crate::event::queue::Dequeue;
 use crate::event::{Flow, InnerLoop};
 use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
 use crate::platform::event::Queue;
@@ -15,6 +16,7 @@ pub struct MainLoop {
     ns_app_delegate: id,
     app_delegate_state: Pin<Box<AppDelegateState>>,
     pub(crate) queue: Queue,
+    finished_launching: bool,
 }
 
 impl MainLoop {
@@ -48,10 +50,11 @@ impl MainLoop {
         });
 
         MainLoop {
-            ns_app,
+            ns_app: unsafe { NSApp() },
             ns_app_delegate,
             app_delegate_state,
             queue,
+            finished_launching: false,
         }
     }
 }
@@ -64,17 +67,26 @@ impl InnerLoop for MainLoop {
     }
 
     fn process(&mut self, flow: &Flow) -> &mut Queue {
+        if !self.finished_launching {
+            autoreleasepool(|| unsafe {
+                let _: () = msg_send![self.ns_app, finishLaunching];
+            });
+        }
         // This block will try to receive the next event from the event queue.
         // The event (NSEvent) gets then propagated through the application by calling sendEvent: event
         // After the call the magic happens and the own event queue gets filled with events:
         //  This works because sendEvent triggers a lot of callbacks that have a reference to this event loop
         //  and therefore they can push events to the queue.
         autoreleasepool(|| unsafe {
-            let until_date: id = match flow {
+            let mut until_date: id = match flow {
                 Flow::Wait => msg_send![class!(NSDate), distantFuture],
                 Flow::Poll => nil, // See https://github.com/exellian/rui/issues/28#issuecomment-1109153317
                 _ => unreachable!(),
             };
+            if !self.finished_launching {
+                until_date = nil;
+                self.finished_launching = true;
+            }
             let event: id = msg_send![
                 self.ns_app,
                 nextEventMatchingMask:(NSEventMask::NSAnyEventMask)

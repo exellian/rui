@@ -7,7 +7,7 @@ use crate::instance::error::Error;
 use crate::renderer::Renderer;
 use crate::surface::Surface;
 use crate::{Backend, Node};
-use rui_io::event::{Event, MainEventLoop};
+use rui_io::event::{Event, Flow, MainEventLoop};
 use rui_io::surface::{SurfaceEvent, SurfaceId};
 
 pub struct Instance<B>
@@ -57,6 +57,7 @@ where
 
     async fn handle_event(&mut self, event: Event) {
         match event {
+            Event::Init => {}
             Event::SurfaceEvent { id, event } => match event {
                 SurfaceEvent::Resized(extent) => {
                     self.renderer.resize(id, extent).await.unwrap();
@@ -84,14 +85,16 @@ where
     pub fn run(self) -> ! {
         let mut main_event_loop = MainEventLoop::new();
         let scheduler = Scheduler::new();
-        let main_worker = scheduler.new_worker();
+        let mut main_worker = scheduler.new_worker();
         main_event_loop.run(|target, event, flow| {
+            *flow = Flow::Poll;
             println!("Hallo");
             for i in 0..10 {
                 main_worker.spawn(async {
                     println!("Hallo!");
                 });
             }
+            //main_worker.poll();
         })
     }
 }

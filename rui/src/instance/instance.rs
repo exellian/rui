@@ -86,15 +86,15 @@ where
         let mut main_event_loop = MainEventLoop::new();
         let scheduler = Scheduler::new();
         let mut main_worker = scheduler.new_worker();
+        for i in 0..10 {
+            main_worker.spawn(async {
+                println!("Hallo!");
+            });
+        }
         main_event_loop.run(|target, event, flow| {
             *flow = Flow::Poll;
-            println!("Hallo");
-            for i in 0..10 {
-                main_worker.spawn(async {
-                    println!("Hallo!");
-                });
-            }
-            //main_worker.poll();
+
+            main_worker.poll();
         })
     }
 }

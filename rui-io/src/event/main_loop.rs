@@ -38,8 +38,12 @@ impl MainLoop {
                     .as_iter_mut()
                     .collect()
             };
+            let event_count = events.len();
             for event in events {
                 callback(&target, Some(&event), &mut flow);
+            }
+            if event_count == 0 {
+                callback(&target, None, &mut flow);
             }
         };
         {

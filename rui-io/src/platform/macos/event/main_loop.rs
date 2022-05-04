@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use cocoa::appkit::{NSApp, NSEventMask};
+use cocoa::appkit::{NSApp, NSApplication, NSEventMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSDefaultRunLoopMode;
 use objc::rc::autoreleasepool;
@@ -87,16 +87,16 @@ impl InnerLoop for MainLoop {
                 until_date = nil;
                 self.finished_launching = true;
             }
-            let event: id = msg_send![
-                self.ns_app,
-                nextEventMatchingMask:(NSEventMask::NSAnyEventMask)
-                untilDate:until_date
-                inMode:NSDefaultRunLoopMode
-                dequeue:YES
-            ];
+            let event: id = self.ns_app.nextEventMatchingMask_untilDate_inMode_dequeue_(
+                NSEventMask::NSAnyEventMask.bits(),
+                until_date,
+                NSDefaultRunLoopMode,
+                YES,
+            );
             if event != nil {
-                let _: () = msg_send![self.ns_app, sendEvent: event];
+                self.ns_app.sendEvent_(event);
             }
+            let _: () = msg_send![self.ns_app, updateWindows];
         });
         &mut self.queue
     }

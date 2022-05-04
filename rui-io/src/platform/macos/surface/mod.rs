@@ -9,7 +9,7 @@ use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
 use crate::surface::{SurfaceAttributes, SurfaceId};
 use class::Class as WindowClass;
-use cocoa::appkit::{CGFloat, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
+use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize};
 use delegate_class::DelegateClass as WindowDelegateClass;
@@ -51,71 +51,81 @@ impl<'main, 'child> Surface<'main, 'child> {
         };
         static IDS: AtomicU64 = AtomicU64::new(0);
         let id = IDS.fetch_add(1, Ordering::Acquire);
-        let ns_window = autoreleasepool(|| {
-            let frame = NSRect::new(
-                NSPoint::new(attr.position.x as CGFloat, attr.position.y as CGFloat),
-                NSSize::new(
-                    attr.current_size.width as CGFloat,
-                    attr.current_size.height as CGFloat,
-                ),
-            );
-            let mut style = NSWindowStyleMask::empty();
-            if !attr.title.is_empty() {
-                style |= NSWindowStyleMask::NSTitledWindowMask;
-            }
-            if attr.is_borderless {
-                style |= NSWindowStyleMask::NSBorderlessWindowMask;
-            }
-            if attr.is_resizable {
-                style |= NSWindowStyleMask::NSResizableWindowMask;
-            }
-            if attr.has_close_button {
-                style |= NSWindowStyleMask::NSClosableWindowMask;
-            }
-            let ns_window: id = unsafe { msg_send![WINDOW_CLASS.as_objc_class(), alloc] };
-            // TODO check if init is safe when ns_window == nil
-            unsafe {
-                ns_window.initWithContentRect_styleMask_backing_defer_(
-                    frame,
-                    style,
-                    NSBackingStoreBuffered,
-                    NO,
+        let (ns_window, ns_view, ns_window_delegate, view_state, window_delegate_state) =
+            autoreleasepool(|| {
+                let frame = NSRect::new(
+                    NSPoint::new(attr.position.x as CGFloat, attr.position.y as CGFloat),
+                    NSSize::new(
+                        attr.current_size.width as CGFloat,
+                        attr.current_size.height as CGFloat,
+                    ),
                 );
-            }
-            if ns_window != nil {
-                panic!("Failed to allocate window!");
-            }
-            ns_window
-        });
-        // NSView creation
-        let view_state = Box::pin(ViewState::new(
-            ns_window,
-            main_loop.inner.borrow().queue.clone(),
-        ));
-        let view_ptr = &*view_state as *const ViewState as *const c_void;
-        let ns_view_alloc: id = unsafe { msg_send![WINDOW_CLASS.as_objc_class(), alloc] };
-        let ns_view: id = unsafe { msg_send![ns_view_alloc, initWithState: view_ptr] };
-        unsafe { ns_window.setContentView_(ns_view) };
-        unsafe { ns_window.setInitialFirstResponder_(ns_view) };
+                let mut style = NSWindowStyleMask::empty();
+                if !attr.title.is_empty() {
+                    style |= NSWindowStyleMask::NSTitledWindowMask;
+                }
+                if attr.is_borderless {
+                    style |= NSWindowStyleMask::NSBorderlessWindowMask;
+                }
+                if attr.is_resizable {
+                    style |= NSWindowStyleMask::NSResizableWindowMask;
+                }
+                if attr.has_close_button {
+                    style |= NSWindowStyleMask::NSClosableWindowMask;
+                }
+                let ns_window_alloc: id = unsafe { msg_send![WINDOW_CLASS.0, alloc] };
+                // TODO check if init is safe when ns_window == nil
+                let ns_window = unsafe {
+                    ns_window_alloc.initWithContentRect_styleMask_backing_defer_(
+                        frame,
+                        style,
+                        NSBackingStoreBuffered,
+                        NO,
+                    )
+                };
 
-        // Window Delegate creation
-        let mut window_delegate_state = Box::pin(WindowDelegateState::new(
-            ns_window,
-            ns_view,
-            main_loop.inner.borrow().queue.clone(),
-        ));
-        let window_delegate_state_ptr =
-            unsafe { window_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
-        let ns_window_delegate_alloc: id =
-            unsafe { msg_send![WINDOW_DELEGATE_CLASS.as_objc_class(), alloc] };
-        let ns_window_delegate: id = unsafe {
-            msg_send![
-                ns_window_delegate_alloc,
-                initWithState: window_delegate_state_ptr
-            ]
-        };
-        unsafe { ns_window.setDelegate_(ns_window_delegate) };
+                if ns_window == nil {
+                    panic!("Failed to allocate window!");
+                }
 
+                // NSView creation
+                let mut view_state = Box::pin(ViewState::new(
+                    ns_window,
+                    main_loop.inner.borrow().queue.clone(),
+                ));
+                let view_state_ptr = unsafe { view_state.as_mut().get_unchecked_mut() as *mut _ };
+                let ns_view_alloc: id = unsafe { msg_send![WINDOW_VIEW_CLASS.0, alloc] };
+                let ns_view: id =
+                    unsafe { msg_send![ns_view_alloc, initWithState: view_state_ptr] };
+                unsafe { ns_window.setContentView_(ns_view) };
+                unsafe { ns_window.setInitialFirstResponder_(ns_view) };
+
+                // Window Delegate creation
+                let mut window_delegate_state = Box::pin(WindowDelegateState::new(
+                    ns_window,
+                    ns_view,
+                    main_loop.inner.borrow().queue.clone(),
+                ));
+                let window_delegate_state_ptr =
+                    unsafe { window_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
+                let ns_window_delegate_alloc: id =
+                    unsafe { msg_send![WINDOW_DELEGATE_CLASS.0, alloc] };
+                let ns_window_delegate: id = unsafe {
+                    msg_send![
+                        ns_window_delegate_alloc,
+                        initWithState: window_delegate_state_ptr
+                    ]
+                };
+                unsafe { ns_window.setDelegate_(ns_window_delegate) };
+                unsafe { ns_window.makeKeyAndOrderFront_(NSApp()) };
+                (
+                    ns_window,
+                    ns_view,
+                    ns_window_delegate,
+                    view_state,
+                    window_delegate_state,
+                )
+            });
         // window creation
         let window = Surface {
             id: SurfaceId::from(id),

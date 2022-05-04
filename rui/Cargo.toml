@@ -21,6 +21,7 @@ num = "0.4"
 rui-io = { path = "../rui-io" }
 rui-util = { path = "../rui-util" }
 rui-async = { path = "../rui-async" }
+rui-macros = { path = "../rui-macros" }
 
 [dependencies.image]
 version = "0.24"

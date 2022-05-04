@@ -12,7 +12,7 @@ use objc::runtime::{Class, Object, Protocol, Sel, BOOL};
 use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
 use crate::platform::platform::surface::view_state::ViewState;
 
-pub struct ViewClass(&'static Class);
+pub struct ViewClass(pub &'static Class);
 impl ViewClass {
     const STATE_IVAR_NAME: &'static str = "_state";
 
@@ -196,10 +196,6 @@ impl ViewClass {
             decl.register()
         };
         ViewClass(class)
-    }
-
-    pub fn as_objc_class(&self) -> &'static Class {
-        &self.0
     }
 
     // borrows individual fields of object as mut

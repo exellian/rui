@@ -1,7 +1,8 @@
 use async_trait::async_trait;
+
 use rui::component::context::Context;
 use rui::component::Component;
-use rui::instance::{Backend, Instance};
+use rui::instance::Backend;
 use rui::node::{comp, component, path, Node};
 use rui::surface::Surface;
 use rui_util::Extent;
@@ -43,24 +44,16 @@ impl Component for Root {
     }
 }
 
-fn main() {
-    let instance = Instance::default();
-    instance.run()
-}
-
-/*
 #[rui::main]
 async fn main() {
     let surface = Surface::builder()
+        .resizable(true)
         .title("Test")
         .size(Extent {
-            width: 720,
-            height: 720
+            width: 600,
+            height: 400,
         })
         .build()
-        .expect("Failed to create window!");
-    let root = component(Root);
-    surface.mount(root);
-    //instance.mount(surface, root).expect("Failed to mount root component!");
+        .await;
+    surface.mount(component(Root)).await;
 }
-*/

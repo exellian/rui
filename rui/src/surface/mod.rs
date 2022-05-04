@@ -1,19 +1,24 @@
 mod builder;
 
+use crate::Node;
 pub use builder::Builder as SurfaceBuilder;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use rui_io::surface::SurfaceId;
 use rui_util::Extent;
 
-pub struct Surface(rui_io::surface::SurfaceId);
+pub struct Surface(SurfaceId);
 
 impl Surface {
-    pub fn new(surface: rui_io::surface::SurfaceId) -> Self {
+    fn new(surface: SurfaceId) -> Self {
         Surface(surface)
     }
 
     pub fn builder<'a>() -> SurfaceBuilder<'a> {
         SurfaceBuilder::new()
+    }
+
+    pub async fn mount(&self, node: Node) {
+        todo!()
     }
 
     pub fn inner_size(&self) -> Extent {

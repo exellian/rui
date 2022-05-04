@@ -7,7 +7,7 @@ use objc::runtime::{Class, Object, Sel, BOOL};
 use std::os::raw::c_void;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub struct DelegateClass(&'static Class);
+pub struct DelegateClass(pub &'static Class);
 impl DelegateClass {
     const STATE_IVAR_NAME: &'static str = "_state";
 
@@ -105,10 +105,6 @@ impl DelegateClass {
             decl.register()
         };
         DelegateClass(class)
-    }
-
-    pub fn as_objc_class(&self) -> &'static objc::runtime::Class {
-        &self.0
     }
 
     unsafe fn cast_state_mut(state: &mut *mut c_void) -> &mut DelegateState {

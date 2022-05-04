@@ -1,5 +1,6 @@
 use rui_async::Scheduler;
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::Arc;
 
 use crate::instance::backend::WGpu;
@@ -9,6 +10,7 @@ use crate::surface::Surface;
 use crate::{Backend, Node};
 use rui_io::event::{Event, Flow, MainEventLoop};
 use rui_io::surface::{SurfaceEvent, SurfaceId};
+use rui_util::Extent;
 
 pub struct Instance<B>
 where
@@ -82,18 +84,29 @@ where
     ///
     /// # Arguments
     /// * `self` - This function takes ownership of self because it doesn't terminate
-    pub fn run(self) -> ! {
+    pub fn run(self, init: impl Future<Output=()>) -> ! {
         let mut main_event_loop = MainEventLoop::new();
         let scheduler = Scheduler::new();
         let mut main_worker = scheduler.new_worker();
-        for i in 0..10 {
-            main_worker.spawn(async {
-                println!("Hallo!");
-            });
-        }
+        main_worker.spawn(init);
+        //let mut window = None;
         main_event_loop.run(|target, event, flow| {
-            *flow = Flow::Poll;
-
+            *flow = Flow::Wait;
+            if let Some(Event::Init) = event {
+                
+                /*
+                window = Some(
+                    rui_io::surface::Surface::builder()
+                        .with_size(Extent {
+                            width: 1270,
+                            height: 720,
+                        })
+                        .with_title("MyWindow")
+                        .with_resizability_flag(true)
+                        .build(target),
+                );
+                */
+            }
             main_worker.poll();
         })
     }

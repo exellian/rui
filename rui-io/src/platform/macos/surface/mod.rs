@@ -1,27 +1,30 @@
-mod class;
-mod delegate_class;
-mod delegate_state;
-mod view_class;
-mod view_state;
+use std::marker::PhantomData;
+use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSView, NSWindow, NSWindowStyleMask};
+use cocoa::base::{id, nil};
+use cocoa::foundation::{NSPoint, NSRect, NSSize};
+use objc::rc::autoreleasepool;
+use objc::runtime::{BOOL, NO};
+use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
+
+use class::Class as WindowClass;
+use delegate_class::DelegateClass as WindowDelegateClass;
+use delegate_state::DelegateState as WindowDelegateState;
+use rui_util::Extent;
+use view_class::ViewClass as WindowViewClass;
 
 use crate::event::LoopTarget;
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
 use crate::surface::{SurfaceAttributes, SurfaceId};
-use class::Class as WindowClass;
-use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSWindow, NSWindowStyleMask};
-use cocoa::base::{id, nil};
-use cocoa::foundation::{NSPoint, NSRect, NSSize};
-use delegate_class::DelegateClass as WindowDelegateClass;
-use delegate_state::DelegateState as WindowDelegateState;
-use objc::rc::autoreleasepool;
-use objc::runtime::{BOOL, NO};
-use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
-use std::marker::PhantomData;
-use std::os::raw::c_void;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, Ordering};
-use view_class::ViewClass as WindowViewClass;
+
+mod class;
+mod delegate_class;
+mod delegate_state;
+mod view_class;
+mod view_state;
 
 pub struct Surface<'main, 'child> {
     id: SurfaceId,
@@ -137,8 +140,25 @@ impl<'main, 'child> Surface<'main, 'child> {
             loop_target: loop_target.clone(),
             _non_send: PhantomData,
         };
-
         window
+    }
+
+    pub fn id(&self) -> SurfaceId {
+        self.id
+    }
+
+    pub fn scale_factor(&self) -> f64 {
+        unsafe { NSWindow::backingScaleFactor(self.ns_window) as _ }
+    }
+
+    pub fn inner_size(&self) -> Extent {
+        let view_frame = unsafe { NSView::frame(self.ns_view) };
+        let scale_factor = self.scale_factor();
+        let (x, y) = (view_frame.size.width as f64, view_frame.size.height as f64);
+        Extent {
+            width: (x * scale_factor) as u32,
+            height: (y * scale_factor) as u32,
+        }
     }
 }
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {

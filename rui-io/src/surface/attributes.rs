@@ -1,6 +1,6 @@
-use std::borrow::Cow;
-use rui_util::{Extent, point::Point};
 use std::default::Default;
+
+use rui_util::{point::Point, Extent};
 
 pub const MAXIMUM_WINDOW_SIZE: Extent = Extent {
     width: u32::MAX,
@@ -14,7 +14,7 @@ pub enum WindowState {
     Windowed = 2,
     Minimized = 3,
     Maximized = 4,
-    Fullscreen = 5
+    Fullscreen = 5,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -25,8 +25,8 @@ pub enum Modality {
 }
 
 #[derive(Debug, Clone)]
-pub struct Attributes<'a> {
-    pub title: Cow<'a, str>,
+pub struct Attributes {
+    pub title: String,
     pub position: Point,
     pub current_size: Extent,
     pub minimum_size: Extent,
@@ -39,16 +39,22 @@ pub struct Attributes<'a> {
     pub has_minimize_button: bool,
     pub has_maximize_button: bool,
     pub has_close_button: bool,
-    pub has_help_button: bool
+    pub has_help_button: bool,
 }
 
-impl Default for Attributes<'static> {
+impl Default for Attributes {
     fn default() -> Self {
         Attributes {
             title: Default::default(),
             position: Point { x: 0, y: 0 },
-            current_size: Extent { width: 480, height: 320 },
-            minimum_size: Extent { width: 0, height: 0 },
+            current_size: Extent {
+                width: 480,
+                height: 320,
+            },
+            minimum_size: Extent {
+                width: 0,
+                height: 0,
+            },
             maximum_size: MAXIMUM_WINDOW_SIZE,
             window_state: WindowState::Hidden,
             modality: Modality::None,
@@ -58,16 +64,13 @@ impl Default for Attributes<'static> {
             has_minimize_button: true,
             has_maximize_button: true,
             has_close_button: true,
-            has_help_button: false
+            has_help_button: false,
         }
     }
 }
 
-impl<'a> Attributes<'a> {
-
+impl Attributes {
     pub fn new() -> Self {
         Attributes::default()
     }
-
-
 }

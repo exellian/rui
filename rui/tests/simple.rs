@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 
-use rui::component::context::Context;
 use rui::component::Component;
-use rui::instance::Backend;
+use rui::instance::backend::Backend;
 use rui::node::{comp, component, path, Node};
 use rui::surface::Surface;
 use rui_util::Extent;
@@ -11,7 +10,7 @@ struct Root;
 
 #[async_trait]
 impl Component for Root {
-    async fn on_event<B>(&mut self, ctx: &mut Context<B>)
+    async fn on_event<B>(&mut self)
     where
         Self: Sized,
         B: Backend,

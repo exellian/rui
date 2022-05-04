@@ -1,5 +1,4 @@
-use crate::component::context::Context;
-use crate::instance::Backend;
+use crate::instance::backend::Backend;
 use crate::node::Node;
 use async_trait::async_trait;
 
@@ -8,7 +7,7 @@ use async_trait::async_trait;
 /// and should handle incoming events on the component
 #[async_trait]
 pub trait Component: Sync + Send {
-    async fn on_event<B>(&mut self, ctx: &mut Context<B>)
+    async fn on_event<B>(&mut self)
     where
         Self: Sized,
         B: Backend;

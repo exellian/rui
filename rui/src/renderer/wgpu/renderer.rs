@@ -1,14 +1,13 @@
+use std::collections::HashMap;
+use std::time::Instant;
+
+use rui_io::surface::SurfaceId;
+use rui_util::Extent;
+
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
 use crate::renderer::wgpu::RendererError;
-use crate::surface::Surface;
 use crate::Backend;
-use async_trait::async_trait;
-use rui_io::surface::SurfaceId;
-use rui_util::Extent;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
 
 pub struct RendererBase {
     pub(crate) instance: wgpu::Instance,
@@ -91,7 +90,6 @@ where
     }
 }
 
-#[async_trait]
 impl<B> crate::renderer::Renderer<B> for Renderer<B>
 where
     B: Backend,
@@ -99,13 +97,17 @@ where
     type Error = RendererError;
 
     //TODO split up in parts and functions that make sense
-    async fn mount(&mut self, surface: Arc<Surface>, node: &mut Node) -> Result<(), Self::Error> {
+    fn mount(
+        &mut self,
+        surface: &rui_io::surface::Surface,
+        node: &mut Node,
+    ) -> Result<(), Self::Error> {
         let sid = surface.id();
         let (job, base) = match self.jobs.get_mut(&sid) {
             None => {
                 // Dynamically creating render base for the first surface that gets mounted
                 let surface_handle = match &mut self.base {
-                    Some(base) => unsafe { base.instance.create_surface(surface.as_ref()) },
+                    Some(base) => unsafe { base.instance.create_surface(surface) },
                     rb @ None => {
                         let backend_bits =
                             wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
@@ -113,9 +115,12 @@ where
 
                         // Creating a surface first before creating the base, so that
                         // the base can use it to find a suitable adapter (GPU)
-                        let first_surface = unsafe { instance.create_surface(surface.as_ref()) };
-                        *rb =
-                            Some(RendererBase::new(backend_bits, instance, &first_surface).await?);
+                        let first_surface = unsafe { instance.create_surface(surface) };
+                        *rb = Some(pollster::block_on(RendererBase::new(
+                            backend_bits,
+                            instance,
+                            &first_surface,
+                        ))?);
                         first_surface
                     }
                 };
@@ -130,22 +135,25 @@ where
                     present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
                 };
                 surface_handle.configure(&base.device, &config);
-                self.jobs.insert(
-                    sid,
-                    RenderJob::new(&base.device, config, surface, surface_handle),
-                );
+                self.jobs
+                    .insert(sid, RenderJob::new(&base.device, config, surface_handle));
                 (self.jobs.get_mut(&sid).unwrap(), base)
             }
             Some(sh) => (sh, self.base.as_ref().unwrap()),
         };
         //Creation of rendering objects
-        job.mount(&base.device, &base.queue, node).await;
+
+        pollster::block_on(job.mount(&base.device, &base.queue, node));
         Ok(())
     }
 
-    async fn resize(&mut self, surface_id: SurfaceId, size: Extent) -> Result<(), Self::Error> {
+    fn resize(
+        &mut self,
+        surface: &rui_io::surface::Surface,
+        size: Extent,
+    ) -> Result<(), Self::Error> {
         let start = Instant::now();
-        let c = self.jobs.get_mut(&surface_id).unwrap();
+        let c = self.jobs.get_mut(&surface.id()).unwrap();
         let base = self.base.as_mut().unwrap();
         c.resize(&base.device, &base.queue, size);
 
@@ -155,12 +163,12 @@ where
         Ok(())
     }
 
-    fn render(&self, surface_id: SurfaceId) -> Result<(), Self::Error> {
+    fn render(&mut self, surface: &rui_io::surface::Surface) -> Result<(), Self::Error> {
         let base = self
             .base
             .as_ref()
             .expect("Can't render with no surface mounted!");
-        let job = self.jobs.get(&surface_id).expect("Invalid surface id!");
+        let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
@@ -201,7 +209,7 @@ where
 
     fn request_render(&self) -> Result<(), Self::Error> {
         for (_, job) in &self.jobs {
-            job.surface_adapter.request_redraw();
+            //job.surface_adapter.request_redraw();
         }
         Ok(())
     }

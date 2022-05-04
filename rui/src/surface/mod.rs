@@ -1,24 +1,35 @@
-mod builder;
+use std::sync::{Arc, RwLock};
 
-use crate::Node;
-pub use builder::Builder as SurfaceBuilder;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-use rui_io::surface::SurfaceId;
-use rui_util::Extent;
 
-pub struct Surface(SurfaceId);
+use crate::error::Error;
+pub use builder::Builder as SurfaceBuilder;
+use rui_io::surface::{SurfaceAttributes, SurfaceId};
+use rui_util::Extent;
+pub(crate) use shared::SharedState as SurfaceSharedState;
+
+use crate::reactor::Reactor;
+use crate::Node;
+
+mod builder;
+mod shared;
+
+pub struct Surface {
+    shared_state: Arc<RwLock<SurfaceSharedState>>,
+}
 
 impl Surface {
-    fn new(surface: SurfaceId) -> Self {
-        Surface(surface)
+    async fn new(attr: SurfaceAttributes) -> Self {
+        let shared_state = Reactor::get().shared.create_surface(attr).await;
+        Surface { shared_state }
     }
 
-    pub fn builder<'a>() -> SurfaceBuilder<'a> {
+    pub fn builder() -> SurfaceBuilder {
         SurfaceBuilder::new()
     }
 
-    pub async fn mount(&self, node: Node) {
-        todo!()
+    pub async fn mount(&self, node: Node) -> Result<(), Error> {
+        Reactor::get().shared.mount(self.id(), node).await
     }
 
     pub fn inner_size(&self) -> Extent {
@@ -26,16 +37,14 @@ impl Surface {
     }
 
     pub fn id(&self) -> SurfaceId {
-        self.0
+        self.shared_state.read().unwrap().id
     }
 
     pub fn request_redraw(&self) {
         todo!()
     }
-}
 
-unsafe impl HasRawWindowHandle for Surface {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        todo!()
+    pub fn raw_handle(&self) -> RawWindowHandle {
+        self.shared_state.read().unwrap().raw_handle
     }
 }

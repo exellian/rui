@@ -93,13 +93,13 @@ pub fn main(args: TokenStream, item: TokenStream) -> TokenStream {
 
     TokenStream::from(quote! {
         fn main() {
-            rui::reactor::Reactor::init();
-            let instance = rui::instance::Instance::default();
-
-            async fn _main() {
-                #body
-            }
-            instance.run(_main())
+            let renderer = rui::renderer::wgpu::Renderer::default();
+            let (instance, shared): (rui::instance::Instance<rui::instance::backend::WGpu>, _) =
+                rui::instance::Instance::new(renderer);
+                async fn _main() {
+                    #body
+                }
+            rui::reactor::Reactor::run(instance, shared, _main())
         }
     })
 }

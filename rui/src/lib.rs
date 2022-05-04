@@ -4,10 +4,11 @@ extern crate core;
 pub use rui_macros::main;
 
 use crate::component::Component;
-use crate::instance::Backend;
+use crate::instance::backend::Backend;
 use crate::node::Node;
 
 pub mod component;
+pub mod error;
 pub mod instance;
 pub mod math;
 pub mod node;

@@ -3,10 +3,11 @@ use std::pin::Pin;
 use cocoa::appkit::{NSApp, NSApplication, NSEventMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSDefaultRunLoopMode;
+use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO, YES};
+use rui_macros::main;
 
-use crate::event::queue::Dequeue;
 use crate::event::{Flow, InnerLoop};
 use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
 use crate::platform::event::Queue;
@@ -63,7 +64,7 @@ impl InnerLoop for MainLoop {
     type Queue = Queue;
 
     fn wake_up(&self) {
-        todo!()
+        unsafe { CFRunLoopWakeUp(CFRunLoopGetMain()) };
     }
 
     fn process(&mut self, flow: &Flow) -> &mut Queue {

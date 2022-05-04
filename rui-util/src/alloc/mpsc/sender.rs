@@ -17,4 +17,8 @@ impl<T> Sender<T> {
             },
         }
     }
+
+    pub fn send(&self, x: T) {
+        self.0.send(x).unwrap()
+    }
 }

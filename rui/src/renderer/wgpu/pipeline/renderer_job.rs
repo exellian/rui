@@ -16,7 +16,6 @@ where
     B: Backend,
 {
     pub(crate) config: wgpu::SurfaceConfiguration,
-    pub(crate) surface_adapter: Arc<Surface>,
     pub(crate) surface: wgpu::Surface,
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
@@ -30,7 +29,6 @@ where
     pub(crate) fn new(
         device: &wgpu::Device,
         config: wgpu::SurfaceConfiguration,
-        surface_adapter: Arc<Surface>,
         surface: wgpu::Surface,
     ) -> Self {
         let rect_pipeline = RectPipeline::new(device, &config);
@@ -38,7 +36,6 @@ where
         let path_pipeline = PathPipeline::new(device, &config);
         RenderJob {
             config,
-            surface_adapter,
             surface,
             rect_pipeline,
             image_pipeline,

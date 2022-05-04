@@ -1,8 +1,8 @@
 mod receiver;
 mod sender;
 
-use crate::alloc::mpsc::receiver::Receiver;
-use crate::alloc::mpsc::sender::Sender;
+pub use crate::alloc::mpsc::receiver::Receiver;
+pub use crate::alloc::mpsc::sender::Sender;
 use crossbeam::channel;
 
 pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {

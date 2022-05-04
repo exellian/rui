@@ -33,10 +33,12 @@ where
     pub fn poll(&mut self, cx: &mut Context<'_>) -> Status {
         match self.future.as_mut().poll(cx) {
             // This is safe because the method gets only called from here
-            Poll::Ready(out) => unsafe { self.output.put_unchecked(out) },
-            Poll::Pending => {}
+            Poll::Ready(out) => {
+                unsafe { self.output.put_unchecked(out) }
+                Status::Ready
+            }
+            Poll::Pending => Status::Pending,
         }
-        Status::Ready
     }
 
     /*

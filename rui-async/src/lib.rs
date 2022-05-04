@@ -1,5 +1,6 @@
 mod scheduler;
 
+pub use scheduler::task::Status;
 pub use scheduler::Scheduler;
 pub use scheduler::Worker;
 

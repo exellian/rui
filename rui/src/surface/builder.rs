@@ -4,17 +4,17 @@ use rui_util::point::Point;
 use rui_util::Extent;
 use std::borrow::Cow;
 
-pub struct Builder<'a> {
-    attributes: SurfaceAttributes<'a>,
+pub struct Builder {
+    attributes: SurfaceAttributes,
 }
-impl<'a> Builder<'a> {
+impl Builder {
     pub fn new() -> Self {
         Builder {
             attributes: SurfaceAttributes::default(),
         }
     }
 
-    pub fn title(mut self, title: impl Into<Cow<'a, str>>) -> Self {
+    pub fn title(mut self, title: impl Into<String>) -> Self {
         self.attributes.title = title.into();
         self
     }
@@ -85,6 +85,6 @@ impl<'a> Builder<'a> {
     }
 
     pub async fn build(self) -> Surface {
-        todo!()
+        Surface::new(self.attributes).await
     }
 }

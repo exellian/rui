@@ -60,12 +60,15 @@ impl<'scheduler> InnerWorker<'scheduler> {
         }
     }
 
-    pub fn poll(&mut self) {
+    pub fn poll(&mut self) -> Status {
         match self.next_task() {
-            None => {}
-            Some(mut task) => match unsafe { task.poll() } {
-                Status::Pending => self.queue_task(task),
-                Status::Ready => {}
+            None => Status::Ready,
+            Some(mut task) => match task.poll() {
+                Status::Pending => {
+                    self.queue_task(task);
+                    Status::Pending
+                }
+                Status::Ready => Status::Pending,
             },
         }
     }

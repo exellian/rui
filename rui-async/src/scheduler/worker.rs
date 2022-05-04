@@ -1,5 +1,5 @@
 use crate::scheduler::inner_worker::InnerWorker;
-use crate::scheduler::task::{JoinHandle, RawTask};
+use crate::scheduler::task::{JoinHandle, RawTask, Status};
 use crate::scheduler::Scheduler;
 use std::future::Future;
 use std::ptr::NonNull;
@@ -27,7 +27,7 @@ impl<'scheduler> Worker<'scheduler> {
         self.inner.spawn(task)
     }
 
-    pub fn poll(&mut self) {
+    pub fn poll(&mut self) -> Status {
         self.inner.poll()
     }
 

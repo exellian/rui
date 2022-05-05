@@ -49,8 +49,8 @@ async fn main() {
         .resizable(true)
         .title("Test")
         .size(Extent {
-            width: 600,
-            height: 400,
+            width: 1440,
+            height: 900,
         })
         .build()
         .await;

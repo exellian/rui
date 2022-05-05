@@ -11,6 +11,7 @@ use objc::runtime::{Class, Object, Protocol, Sel, BOOL};
 
 use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
 use crate::platform::platform::surface::view_state::ViewState;
+use crate::platform::platform::util;
 
 pub struct ViewClass(pub &'static Class);
 impl ViewClass {
@@ -278,7 +279,11 @@ impl ViewClass {
     }
 
     extern "C" fn draw_rect(this: &mut Object, _sel: Sel, rect: NSRect) {
-        unsafe { Self::get_state_mut(this) }.draw_rect(rect)
+        unsafe { Self::get_state_mut(this) }.draw_rect(rect);
+        unsafe {
+            let superclass = util::superclass(this);
+            let () = msg_send![super(this, superclass), drawRect: rect];
+        }
     }
 
     extern "C" fn accepts_first_responder(this: &mut Object, _sel: Sel) -> BOOL {

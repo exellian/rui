@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::sync::{Arc, RwLock};
+use std::time::SystemTime;
 
 use raw_window_handle::HasRawWindowHandle;
 
@@ -94,11 +95,32 @@ where
         let mut surfaces = HashMap::new();
         let mut mounted = HashSet::new();
 
+        let mut last_render = SystemTime::now();
+
         main_event_loop.run(move |target, event, flow| {
             *flow = Flow::Wait;
             if let Some(Event::Init) = event {
                 // Start the app
                 main_worker.spawn(start_app.take().unwrap());
+            }
+            if let Some(Event::SurfaceEvent { id, event }) = event {
+                match event {
+                    SurfaceEvent::Resized(_) => {}
+                    SurfaceEvent::Redraw => {
+                        if mounted.contains(id) {
+                            let (surface, _) = surfaces.get(id).unwrap();
+                            let dur = SystemTime::now().duration_since(last_render).unwrap();
+                            //if dur.as_millis() >= 200 {
+                            last_render = SystemTime::now();
+                            rui_util::bench("Render", || {
+                                self.renderer.render(surface).unwrap();
+                            });
+                            //}
+                            //
+                        }
+                    }
+                    SurfaceEvent::ShouldClose => {}
+                }
             }
             match self.main_loop_receiver.try_recv() {
                 None => {}
@@ -126,9 +148,11 @@ where
                     },
                 },
             }
+
             for id in &mounted {
                 let (surface, _) = &surfaces[id];
-                self.renderer.render(surface).unwrap();
+                surface.request_redraw();
+                //self.renderer.render(surface);
             }
 
             // Change the worker flow to poll if we still have tasks to poll

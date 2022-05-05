@@ -32,7 +32,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn request_redraw(&self) {
-        todo!()
+        self.0.request_redraw()
     }
 }
 

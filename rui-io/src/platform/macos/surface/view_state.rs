@@ -1,5 +1,9 @@
+use crate::event::queue::Enqueue;
+use crate::event::Event;
 use crate::platform::event::Queue;
 use crate::platform::platform::ffi::{NSMutableAttributedString, NSRange};
+use crate::platform::platform::util;
+use crate::surface::SurfaceEvent;
 use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize, NSUInteger};
@@ -23,7 +27,12 @@ impl ViewState {
 
     pub fn frame_did_change(&mut self) {}
 
-    pub fn draw_rect(&mut self, rect: NSRect) {}
+    pub fn draw_rect(&mut self, rect: NSRect) {
+        self.queue.enqueue(Event::SurfaceEvent {
+            id: util::get_window_id(self.ns_window),
+            event: SurfaceEvent::Redraw,
+        })
+    }
 
     pub fn accepts_first_responder(&mut self) -> BOOL {
         YES

@@ -4,9 +4,10 @@ use crate::event::loop_target::LoopTarget;
 use crate::event::queue::Queue;
 use crate::event::{Event, Flow, InnerLoop};
 use crate::platform;
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::process::exit;
 use std::sync::RwLock;
+use std::time::SystemTime;
 
 pub struct MainLoop {
     state: LoopStateRef,
@@ -32,6 +33,7 @@ impl MainLoop {
             if let Flow::Exit(exit_code) = flow {
                 break exit_code;
             }
+
             let events: Vec<Event> = {
                 let mut mut_guard = self.inner.borrow_mut();
                 (mut_guard.process(&flow) as &mut dyn Queue<Event>)

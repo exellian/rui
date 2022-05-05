@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::sync::RwLock;
 
 use cocoa::appkit::{NSApp, NSApplication, NSEventMask};
 use cocoa::base::{id, nil};
@@ -6,17 +7,19 @@ use cocoa::foundation::NSDefaultRunLoopMode;
 use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO, YES};
-use rui_macros::main;
 
-use crate::event::{Flow, InnerLoop};
+use crate::event::queue::Enqueue;
+use crate::event::{Event, Flow, InnerLoop};
 use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
 use crate::platform::event::Queue;
+use crate::surface::{SurfaceEvent, SurfaceId};
 
 pub struct MainLoop {
     ns_app: id,
     ns_app_delegate: id,
     app_delegate_state: Pin<Box<AppDelegateState>>,
     pub(crate) queue: Queue,
+    pub(crate) redraw_pending: Vec<SurfaceId>,
     finished_launching: bool,
 }
 
@@ -55,6 +58,7 @@ impl MainLoop {
             ns_app_delegate,
             app_delegate_state,
             queue,
+            redraw_pending: vec![],
             finished_launching: false,
         }
     }
@@ -97,8 +101,18 @@ impl InnerLoop for MainLoop {
             if event != nil {
                 self.ns_app.sendEvent_(event);
             }
-            let _: () = msg_send![self.ns_app, updateWindows];
+            //let _: () = msg_send![self.ns_app, updateWindows];
         });
+
+        if !self.redraw_pending.is_empty() {
+            for id in self.redraw_pending.drain(..) {
+                self.queue.enqueue(Event::SurfaceEvent {
+                    id,
+                    event: SurfaceEvent::Redraw,
+                })
+            }
+        }
+
         &mut self.queue
     }
 }

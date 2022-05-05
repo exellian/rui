@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSView, NSWindow, NSWindowStyleMask};
 use cocoa::base::{id, nil};
@@ -15,9 +14,11 @@ use delegate_state::DelegateState as WindowDelegateState;
 use rui_util::Extent;
 use view_class::ViewClass as WindowViewClass;
 
-use crate::event::LoopTarget;
+use crate::event::{InnerLoop, LoopTarget};
+use crate::platform::event::Queue;
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
+use crate::platform::platform::util;
 use crate::surface::{SurfaceAttributes, SurfaceId};
 
 mod class;
@@ -27,12 +28,12 @@ mod view_class;
 mod view_state;
 
 pub struct Surface<'main, 'child> {
-    id: SurfaceId,
     ns_window: id,
     ns_view: id,
     ns_window_delegate: id,
     view_state: Pin<Box<ViewState>>,
     window_delegate_state: Pin<Box<DelegateState>>,
+    queue: Queue,
     loop_target: LoopTarget<'main, 'child>,
     // Ensure that the window cannot be send between threads
     _non_send: PhantomData<*const ()>,
@@ -52,8 +53,6 @@ impl<'main, 'child> Surface<'main, 'child> {
             LoopTarget::Main(ml) => *ml,
             LoopTarget::Child(child) => child.main,
         };
-        static IDS: AtomicU64 = AtomicU64::new(0);
-        let id = IDS.fetch_add(1, Ordering::Acquire);
         let (ns_window, ns_view, ns_window_delegate, view_state, window_delegate_state) =
             autoreleasepool(|| {
                 let frame = NSRect::new(
@@ -131,12 +130,12 @@ impl<'main, 'child> Surface<'main, 'child> {
             });
         // window creation
         let window = Surface {
-            id: SurfaceId::from(id),
             ns_window,
             ns_view,
             ns_window_delegate,
             view_state,
             window_delegate_state,
+            queue: main_loop.inner.borrow_mut().queue.clone(),
             loop_target: loop_target.clone(),
             _non_send: PhantomData,
         };
@@ -144,7 +143,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn id(&self) -> SurfaceId {
-        self.id
+        util::get_window_id(self.ns_window)
     }
 
     pub fn scale_factor(&self) -> f64 {
@@ -158,6 +157,20 @@ impl<'main, 'child> Surface<'main, 'child> {
         Extent {
             width: (x * scale_factor) as u32,
             height: (y * scale_factor) as u32,
+        }
+    }
+
+    pub fn request_redraw(&self) {
+        match self.loop_target {
+            LoopTarget::Main(main) => {
+                let id = self.id();
+                let mut mut_guard = main.inner.borrow_mut();
+                if !mut_guard.redraw_pending.contains(&id) {
+                    mut_guard.redraw_pending.push(id);
+                }
+                mut_guard.wake_up();
+            }
+            LoopTarget::Child(_) => unreachable!(),
         }
     }
 }

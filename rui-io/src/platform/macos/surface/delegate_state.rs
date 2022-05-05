@@ -42,8 +42,9 @@ impl DelegateState {
             rect.size.width as f64 * scale_factor,
             rect.size.height as f64 * scale_factor,
         );
+
         self.queue.enqueue(Event::SurfaceEvent {
-            id: SurfaceId::from(0), //self.window.id, // TODO window id
+            id: util::get_window_id(self.ns_window),
             event: SurfaceEvent::Resized(Extent {
                 width: size.0.round() as u32,
                 height: size.1.round() as u32,

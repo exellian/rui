@@ -469,9 +469,9 @@ fn edge_values_linear(
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
 
-    if (true) {
-        return vec4<f32>(1.0);
-    }
+    //if (true) {
+    //    return vec4<f32>(1.0);
+    //}
 
     var y_closest_top: EdgeValue = ev_none;
     var y_closest_bot: EdgeValue = ev_none;

@@ -9,6 +9,27 @@ pub use extent::Extent;
 pub use offset::Offset;
 use std::time::SystemTime;
 
+#[macro_export]
+macro_rules! bs {
+    ($name: ident) => {
+        let $name = std::time::SystemTime::now();
+    };
+}
+
+#[macro_export]
+macro_rules! be {
+    ($name: ident) => {
+        println!(
+            "{}: {}ms",
+            stringify!($name),
+            std::time::SystemTime::now()
+                .duration_since($name)
+                .unwrap()
+                .as_millis()
+        );
+    };
+}
+
 pub fn bench<T>(name: &str, callback: impl FnOnce() -> T) -> T {
     let render = SystemTime::now();
     let res = callback();

@@ -12,6 +12,7 @@
       <sourceFolder url="file://$MODULE_DIR$/rui-util/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rui/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rui-test/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/rui-macros/target" />
       <excludeFolder url="file://$MODULE_DIR$/rui-util/target" />

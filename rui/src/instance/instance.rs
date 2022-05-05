@@ -95,8 +95,6 @@ where
         let mut surfaces = HashMap::new();
         let mut mounted = HashSet::new();
 
-        let mut last_render = SystemTime::now();
-
         main_event_loop.run(move |target, event, flow| {
             *flow = Flow::Wait;
             if let Some(Event::Init) = event {
@@ -105,18 +103,19 @@ where
             }
             if let Some(Event::SurfaceEvent { id, event }) = event {
                 match event {
-                    SurfaceEvent::Resized(_) => {}
+                    SurfaceEvent::Resized(extent) => match surfaces.get(id) {
+                        Some((surface, _)) => {
+                            if mounted.contains(id) {
+                                self.renderer.resize(surface, extent.clone()).unwrap();
+                                surface.request_redraw();
+                            }
+                        }
+                        None => {}
+                    },
                     SurfaceEvent::Redraw => {
                         if mounted.contains(id) {
                             let (surface, _) = surfaces.get(id).unwrap();
-                            let dur = SystemTime::now().duration_since(last_render).unwrap();
-                            //if dur.as_millis() >= 200 {
-                            last_render = SystemTime::now();
-                            rui_util::bench("Render", || {
-                                self.renderer.render(surface).unwrap();
-                            });
-                            //}
-                            //
+                            self.renderer.render(surface).unwrap();
                         }
                     }
                     SurfaceEvent::ShouldClose => {}
@@ -147,12 +146,6 @@ where
                         }
                     },
                 },
-            }
-
-            for id in &mounted {
-                let (surface, _) = &surfaces[id];
-                surface.request_redraw();
-                //self.renderer.render(surface);
             }
 
             // Change the worker flow to poll if we still have tasks to poll

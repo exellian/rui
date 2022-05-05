@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use rui_io::surface::SurfaceId;
-use rui_util::Extent;
+use rui_util::{be, bs, Extent};
 
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
@@ -132,7 +132,7 @@ where
                     format: swapchain_format,
                     width: size.width,
                     height: size.height,
-                    present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
+                    present_mode: wgpu::PresentMode::Mailbox, //TODO add option for disabling vsync
                 };
                 surface_handle.configure(&base.device, &config);
                 self.jobs
@@ -169,6 +169,7 @@ where
             .as_ref()
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
+        bs!(get_texture);
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
@@ -178,6 +179,7 @@ where
                     .expect("Failed to acquire next surface texture!")
             }
         };
+        be!(get_texture);
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -203,7 +205,6 @@ where
 
         base.queue.submit(Some(encoder.finish()));
         frame.present();
-
         Ok(())
     }
 

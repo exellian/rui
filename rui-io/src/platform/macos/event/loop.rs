@@ -1,19 +1,12 @@
 use crate::event::{Event, Flow, InnerLoop};
-use crate::platform::event::none_queue::NoneQueue;
 
-pub struct Loop {
-    queue: NoneQueue,
-}
+pub struct Loop {}
 impl Loop {
     pub fn new() -> Self {
-        Loop {
-            queue: NoneQueue::new(),
-        }
+        Loop {}
     }
 }
 impl InnerLoop for Loop {
-    type Queue = NoneQueue;
-
     fn wake_up(&self) {
         todo!()
     }

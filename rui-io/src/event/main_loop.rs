@@ -1,13 +1,12 @@
-use crate::event::loop_control::LoopControl;
-use crate::event::loop_state::LoopStateRef;
-use crate::event::loop_target::LoopTarget;
-use crate::event::queue::Queue;
-use crate::event::{Event, Flow, InnerLoop};
-use crate::platform;
 use std::cell::RefCell;
 use std::process::exit;
 use std::sync::RwLock;
-use std::time::SystemTime;
+
+use crate::event::loop_control::LoopControl;
+use crate::event::loop_state::LoopStateRef;
+use crate::event::loop_target::LoopTarget;
+use crate::event::{Event, Flow, InnerLoop};
+use crate::platform;
 
 pub struct MainLoop {
     state: LoopStateRef,

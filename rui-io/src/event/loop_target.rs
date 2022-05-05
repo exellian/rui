@@ -1,13 +1,12 @@
+use std::thread;
+
+use rui_util::ffi::NonNullSend;
+
 use crate::event::exit_code::ExitCode;
 use crate::event::loop_control::LoopControl;
 use crate::event::loop_state::LoopStateRef;
 use crate::event::main_loop::MainLoop;
 use crate::event::r#loop::Loop;
-use crate::event::Event;
-use rui_util::ffi::{NonNullSend, UnsafeSend};
-use std::mem::MaybeUninit;
-use std::pin::Pin;
-use std::{mem, thread};
 
 #[derive(Clone)]
 pub enum LoopTarget<'main, 'child> {

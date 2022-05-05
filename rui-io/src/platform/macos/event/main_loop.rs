@@ -28,8 +28,6 @@ impl MainLoop {
 }
 
 impl InnerLoop for MainLoop {
-    type Queue = Queue;
-
     fn wake_up(&self) {
         unsafe { CFRunLoopWakeUp(CFRunLoopGetMain()) };
     }

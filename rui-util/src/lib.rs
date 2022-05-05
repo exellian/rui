@@ -12,7 +12,7 @@ use std::time::SystemTime;
 #[macro_export]
 macro_rules! bs {
     ($name: ident) => {
-        let $name = std::time::SystemTime::now();
+        let $name = std::time::Instant::now();
     };
 }
 
@@ -22,10 +22,7 @@ macro_rules! be {
         println!(
             "{}: {}ms",
             stringify!($name),
-            std::time::SystemTime::now()
-                .duration_since($name)
-                .unwrap()
-                .as_millis()
+            $name.elapsed().as_micros() as f64 / 1000.0
         );
     };
 }

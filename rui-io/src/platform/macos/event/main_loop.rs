@@ -1,66 +1,29 @@
-use std::pin::Pin;
-use std::sync::RwLock;
-
-use cocoa::appkit::{NSApp, NSApplication, NSEventMask};
+use cocoa::appkit::{NSApplication, NSEventMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::NSDefaultRunLoopMode;
 use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use objc::rc::autoreleasepool;
-use objc::runtime::{BOOL, NO, YES};
+use objc::runtime::{NO, YES};
 
-use crate::event::queue::Enqueue;
 use crate::event::{Event, Flow, InnerLoop};
-use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
+use crate::platform::event::main_loop_state::MainLoopState;
 use crate::platform::event::Queue;
-use crate::surface::{SurfaceEvent, SurfaceId};
+use crate::surface::SurfaceEvent;
 
 pub struct MainLoop {
-    ns_app: id,
-    ns_app_delegate: id,
-    app_delegate_state: Pin<Box<AppDelegateState>>,
-    pub(crate) queue: Queue,
-    pub(crate) redraw_pending: Vec<SurfaceId>,
-    finished_launching: bool,
+    state: Option<MainLoopState>,
 }
 
 impl MainLoop {
     pub fn new() -> Self {
-        let is_main_thread: BOOL = unsafe { msg_send!(class!(NSThread), isMainThread) };
-        if is_main_thread == NO {
-            panic!("On macOS, `EventLoop` must be created on the main thread!");
-        }
+        MainLoop { state: None }
+    }
 
-        lazy_static! {
-            static ref APP_CLASS: AppClass = AppClass::new();
-            static ref APP_DELEGATE_CLASS: AppDelegateClass = AppDelegateClass::new();
-        }
-
-        let queue = Queue::new();
-
-        // This must be done before `NSApp()` (equivalent to sending
-        // `sharedApplication`) is called anywhere else, or we'll end up
-        // with the wrong `NSApplication` class and the wrong thread could
-        // be marked as main.
-        let ns_app: id = unsafe { msg_send![APP_CLASS.0, sharedApplication] };
-
-        let mut app_delegate_state = Box::pin(AppDelegateState::new(queue.clone()));
-        let app_delegate_state_ptr =
-            unsafe { app_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
-        let ns_app_delegate_alloc: id = unsafe { msg_send![APP_DELEGATE_CLASS.0, alloc] };
-        let ns_app_delegate: id =
-            unsafe { msg_send![ns_app_delegate_alloc, initWithState: app_delegate_state_ptr] };
-        autoreleasepool(|| {
-            let _: () = unsafe { msg_send![ns_app, setDelegate: ns_app_delegate] };
-        });
-
-        MainLoop {
-            ns_app: unsafe { NSApp() },
-            ns_app_delegate,
-            app_delegate_state,
-            queue,
-            redraw_pending: vec![],
-            finished_launching: false,
-        }
+    pub fn state(&self) -> &MainLoopState {
+        self.state.as_ref().unwrap()
+    }
+    pub fn state_mut(&mut self) -> &mut MainLoopState {
+        self.state.as_mut().unwrap()
     }
 }
 
@@ -71,48 +34,49 @@ impl InnerLoop for MainLoop {
         unsafe { CFRunLoopWakeUp(CFRunLoopGetMain()) };
     }
 
-    fn process(&mut self, flow: &Flow) -> &mut Queue {
-        if !self.finished_launching {
-            autoreleasepool(|| unsafe {
-                let _: () = msg_send![self.ns_app, finishLaunching];
-            });
-        }
+    fn init(&mut self, callback: impl FnMut(&Event)) {
+        self.state = Some(MainLoopState::new(callback));
+        autoreleasepool(|| unsafe {
+            let _: () = msg_send![self.state().ns_app, finishLaunching];
+        });
+    }
+
+    fn process(&mut self, flow: &Flow) {
+        let state = self.state_mut();
         // This block will try to receive the next event from the event queue.
         // The event (NSEvent) gets then propagated through the application by calling sendEvent: event
         // After the call the magic happens and the own event queue gets filled with events:
         //  This works because sendEvent triggers a lot of callbacks that have a reference to this event loop
         //  and therefore they can push events to the queue.
         autoreleasepool(|| unsafe {
-            let mut until_date: id = match flow {
-                Flow::Wait => msg_send![class!(NSDate), distantFuture],
-                Flow::Poll => nil, // See https://github.com/exellian/rui/issues/28#issuecomment-1109153317
-                _ => unreachable!(),
-            };
-            if !self.finished_launching {
-                until_date = nil;
-                self.finished_launching = true;
+            let event: id = state
+                .ns_app
+                .nextEventMatchingMask_untilDate_inMode_dequeue_(
+                    NSEventMask::NSAnyEventMask.bits(),
+                    nil,
+                    NSDefaultRunLoopMode,
+                    YES,
+                );
+            state.ns_app.sendEvent_(event);
+            if let Flow::Wait = flow {
+                let _: id = state
+                    .ns_app
+                    .nextEventMatchingMask_untilDate_inMode_dequeue_(
+                        NSEventMask::NSAnyEventMask.bits(),
+                        msg_send![class!(NSDate), distantFuture],
+                        NSDefaultRunLoopMode,
+                        NO,
+                    );
             }
-            let event: id = self.ns_app.nextEventMatchingMask_untilDate_inMode_dequeue_(
-                NSEventMask::NSAnyEventMask.bits(),
-                until_date,
-                NSDefaultRunLoopMode,
-                YES,
-            );
-            if event != nil {
-                self.ns_app.sendEvent_(event);
-            }
-            //let _: () = msg_send![self.ns_app, updateWindows];
         });
-
-        if !self.redraw_pending.is_empty() {
-            for id in self.redraw_pending.drain(..) {
-                self.queue.enqueue(Event::SurfaceEvent {
+        //println!("loop end");
+        if !state.redraw_pending.is_empty() {
+            for id in state.redraw_pending.drain(..) {
+                (state.callback.as_ref().borrow_mut())(&Event::SurfaceEvent {
                     id,
                     event: SurfaceEvent::Redraw,
-                })
+                });
             }
         }
-
-        &mut self.queue
     }
 }

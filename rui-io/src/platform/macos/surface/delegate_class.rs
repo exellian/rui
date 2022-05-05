@@ -1,7 +1,7 @@
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil};
-use cocoa::foundation::NSUInteger;
+use cocoa::foundation::{NSSize, NSUInteger};
 use objc::declare::ClassDecl;
 use objc::runtime::{Class, Object, Sel, BOOL};
 use std::os::raw::c_void;
@@ -38,6 +38,11 @@ impl DelegateClass {
             decl.add_method(
                 sel!(windowDidResize:),
                 Self::window_did_resize as extern "C" fn(&mut Object, Sel, id),
+            );
+            decl.add_method(
+                sel!(windowWillResize:toSize:),
+                Self::window_will_resize_to_size
+                    as extern "C" fn(&mut Object, Sel, id, NSSize) -> NSSize,
             );
             decl.add_method(
                 sel!(windowDidMove:),
@@ -143,6 +148,16 @@ impl DelegateClass {
 
     extern "C" fn window_did_resize(this: &mut Object, _: Sel, _: id) {
         unsafe { Self::get_state_mut(this) }.window_did_resize();
+    }
+
+    extern "C" fn window_will_resize_to_size(
+        this: &mut Object,
+        _: Sel,
+        _: id,
+        size: NSSize,
+    ) -> NSSize {
+        unsafe { Self::get_state_mut(this) }.window_will_resize_to_size(size);
+        size
     }
 
     extern "C" fn window_did_move(this: &mut Object, _: Sel, _: id) {

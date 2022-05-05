@@ -132,7 +132,7 @@ where
                     format: swapchain_format,
                     width: size.width,
                     height: size.height,
-                    present_mode: wgpu::PresentMode::Mailbox, //TODO add option for disabling vsync
+                    present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
                 };
                 surface_handle.configure(&base.device, &config);
                 self.jobs
@@ -152,34 +152,33 @@ where
         surface: &rui_io::surface::Surface,
         size: Extent,
     ) -> Result<(), Self::Error> {
-        let start = Instant::now();
+        bs!(resize);
         let c = self.jobs.get_mut(&surface.id()).unwrap();
         let base = self.base.as_mut().unwrap();
         c.resize(&base.device, &base.queue, size);
-
-        let elapsed = start.elapsed();
-        println!("resize time: {}ms", elapsed.as_micros() as f64 / 1000.0);
-
+        be!(resize);
         Ok(())
     }
 
     fn render(&mut self, surface: &rui_io::surface::Surface) -> Result<(), Self::Error> {
+        bs!(render_time);
         let base = self
             .base
             .as_ref()
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
-        bs!(get_texture);
+
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
+                println!("lol");
                 job.surface.configure(&base.device, &job.config);
                 job.surface
                     .get_current_texture()
                     .expect("Failed to acquire next surface texture!")
             }
         };
-        be!(get_texture);
+
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -205,6 +204,7 @@ where
 
         base.queue.submit(Some(encoder.finish()));
         frame.present();
+        be!(render_time);
         Ok(())
     }
 

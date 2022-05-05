@@ -53,10 +53,7 @@ impl<'main> Loop<'main> {
             if !self.state.is_running() {
                 break ExitCode::Default;
             }
-            let events = inner.process(&flow) as &mut dyn Queue<Event>;
-            for event in events.as_iter_mut() {
-                callback(&target, Some(&event), &mut flow);
-            }
+            inner.process(&flow);
         };
         exit_code
     }

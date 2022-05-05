@@ -1,5 +1,5 @@
 use objc::declare::ClassDecl;
-use objc::runtime::{Object, Sel, BOOL, YES};
+use objc::runtime::{Object, Sel, BOOL, NO, YES};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct Class(pub &'static objc::runtime::Class);

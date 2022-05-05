@@ -1,7 +1,10 @@
 use cocoa::appkit::{NSView, NSWindow};
 use cocoa::base::id;
-use cocoa::foundation::NSUInteger;
+use cocoa::foundation::{NSSize, NSUInteger};
 use objc::runtime::{BOOL, NO, YES};
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use rui_util::Extent;
 
@@ -14,14 +17,16 @@ use crate::surface::{SurfaceEvent, SurfaceId};
 pub struct DelegateState {
     ns_window: id,
     ns_view: id,
-    queue: Queue,
+    emit_resize: bool,
+    callback: Rc<RefCell<dyn FnMut(&Event)>>,
 }
 impl DelegateState {
-    pub fn new(ns_window: id, ns_view: id, queue: Queue) -> Self {
+    pub fn new(ns_window: id, ns_view: id, callback: Rc<RefCell<dyn FnMut(&Event)>>) -> Self {
         DelegateState {
             ns_window,
             ns_view,
-            queue,
+            emit_resize: false,
+            callback,
         }
     }
 
@@ -35,21 +40,43 @@ impl DelegateState {
 
     pub fn window_will_close(&mut self) {}
 
-    pub fn window_did_resize(&mut self) {
-        let rect = unsafe { NSView::frame(self.ns_view) };
+    fn get_size(&mut self, input: NSSize) -> (u32, u32) {
         let scale_factor = self.get_scale_factor();
         let size = (
-            rect.size.width as f64 * scale_factor,
-            rect.size.height as f64 * scale_factor,
+            input.width as f64 * scale_factor,
+            input.height as f64 * scale_factor,
         );
+        (size.0.round() as u32, size.1.round() as u32)
+    }
 
-        self.queue.enqueue(Event::SurfaceEvent {
+    pub fn window_did_resize(&mut self) {
+        if self.emit_resize {
+            let rect = unsafe { NSView::frame(self.ns_view) };
+            let size = self.get_size(rect.size);
+            (self.callback.as_ref().borrow_mut())(&Event::SurfaceEvent {
+                id: util::get_window_id(self.ns_window),
+                event: SurfaceEvent::Resized(Extent {
+                    width: size.0,
+                    height: size.1,
+                }),
+            });
+            println!("After");
+        }
+    }
+
+    pub fn window_will_resize_to_size(&mut self, mut to_size: NSSize) -> NSSize {
+        let current = unsafe { NSView::frame(self.ns_view) };
+
+        let to = self.get_size(current.size);
+        (self.callback.as_ref().borrow_mut())(&Event::SurfaceEvent {
             id: util::get_window_id(self.ns_window),
             event: SurfaceEvent::Resized(Extent {
-                width: size.0.round() as u32,
-                height: size.1.round() as u32,
+                width: to.0,
+                height: to.1,
             }),
         });
+        self.emit_resize = false;
+        to_size
     }
 
     pub fn window_did_move(&mut self) {}

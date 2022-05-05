@@ -107,7 +107,7 @@ where
                         Some((surface, _)) => {
                             if mounted.contains(id) {
                                 self.renderer.resize(surface, extent.clone()).unwrap();
-                                surface.request_redraw();
+                                self.renderer.render(surface).unwrap();
                             }
                         }
                         None => {}
@@ -143,13 +143,15 @@ where
                         Some((surface, _)) => {
                             self.mount(surface, node).unwrap();
                             mounted.insert(surface.id());
+                            self.renderer.render(surface).unwrap();
+                            sender.send(Ok(()))
                         }
                     },
                 },
             }
 
             // Change the worker flow to poll if we still have tasks to poll
-            // and change to waiting when not work is present
+            // and change to waiting when work is not present
             match main_worker.poll() {
                 Status::Pending => *flow = Flow::Poll,
                 Status::Ready => *flow = Flow::Wait,

@@ -8,18 +8,21 @@ use cocoa::appkit::NSWindow;
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize, NSUInteger};
 use objc::runtime::{Sel, BOOL, NO, YES};
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct ViewState {
     ns_window: id,
     ime_position: (f64, f64),
-    queue: Queue,
+    callback: Rc<RefCell<dyn FnMut(&Event)>>,
 }
 impl ViewState {
-    pub fn new(ns_window: id, queue: Queue) -> Self {
+    pub fn new(ns_window: id, callback: Rc<RefCell<dyn FnMut(&Event)>>) -> Self {
         ViewState {
             ns_window,
             ime_position: (0.0, 0.0),
-            queue,
+            callback,
         }
     }
 
@@ -28,7 +31,8 @@ impl ViewState {
     pub fn frame_did_change(&mut self) {}
 
     pub fn draw_rect(&mut self, rect: NSRect) {
-        self.queue.enqueue(Event::SurfaceEvent {
+        println!("Redraw");
+        (self.callback.as_ref().borrow_mut())(&Event::SurfaceEvent {
             id: util::get_window_id(self.ns_window),
             event: SurfaceEvent::Redraw,
         })

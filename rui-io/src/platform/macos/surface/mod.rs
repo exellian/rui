@@ -4,8 +4,9 @@ use std::pin::Pin;
 use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSView, NSWindow, NSWindowStyleMask};
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize};
+use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use objc::rc::autoreleasepool;
-use objc::runtime::{BOOL, NO};
+use objc::runtime::{BOOL, NO, YES};
 use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
 
 use class::Class as WindowClass;
@@ -18,7 +19,7 @@ use crate::event::{InnerLoop, LoopTarget};
 use crate::platform::event::Queue;
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
-use crate::platform::platform::util;
+use crate::platform::platform::{ffi, util};
 use crate::surface::{SurfaceAttributes, SurfaceId};
 
 mod class;
@@ -33,7 +34,6 @@ pub struct Surface<'main, 'child> {
     ns_window_delegate: id,
     view_state: Pin<Box<ViewState>>,
     window_delegate_state: Pin<Box<DelegateState>>,
-    queue: Queue,
     loop_target: LoopTarget<'main, 'child>,
     // Ensure that the window cannot be send between threads
     _non_send: PhantomData<*const ()>,
@@ -63,6 +63,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                     ),
                 );
                 let mut style = NSWindowStyleMask::empty();
+
                 if !attr.title.is_empty() {
                     style |= NSWindowStyleMask::NSTitledWindowMask;
                 }
@@ -89,16 +90,27 @@ impl<'main, 'child> Surface<'main, 'child> {
                 if ns_window == nil {
                     panic!("Failed to allocate window!");
                 }
+                unsafe {
+                    ns_window.setReleasedWhenClosed_(NO);
+                    ns_window.setAcceptsMouseMovedEvents_(YES);
+                };
 
                 // NSView creation
                 let mut view_state = Box::pin(ViewState::new(
                     ns_window,
-                    main_loop.inner.borrow().queue.clone(),
+                    main_loop.inner.borrow().state().callback.clone(),
                 ));
                 let view_state_ptr = unsafe { view_state.as_mut().get_unchecked_mut() as *mut _ };
                 let ns_view_alloc: id = unsafe { msg_send![WINDOW_VIEW_CLASS.0, alloc] };
                 let ns_view: id =
                     unsafe { msg_send![ns_view_alloc, initWithState: view_state_ptr] };
+                let _: () = unsafe {
+                    msg_send![
+                        ns_view,
+                        setLayerContentsRedrawPolicy:
+                            (ffi::NSViewLayerContentsRedrawOnSetNeedsDisplay)
+                    ]
+                };
                 unsafe { ns_window.setContentView_(ns_view) };
                 unsafe { ns_window.setInitialFirstResponder_(ns_view) };
 
@@ -106,7 +118,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                 let mut window_delegate_state = Box::pin(WindowDelegateState::new(
                     ns_window,
                     ns_view,
-                    main_loop.inner.borrow().queue.clone(),
+                    main_loop.inner.borrow().state().callback.clone(),
                 ));
                 let window_delegate_state_ptr =
                     unsafe { window_delegate_state.as_mut().get_unchecked_mut() as *mut _ };
@@ -135,7 +147,6 @@ impl<'main, 'child> Surface<'main, 'child> {
             ns_window_delegate,
             view_state,
             window_delegate_state,
-            queue: main_loop.inner.borrow_mut().queue.clone(),
             loop_target: loop_target.clone(),
             _non_send: PhantomData,
         };
@@ -165,10 +176,13 @@ impl<'main, 'child> Surface<'main, 'child> {
             LoopTarget::Main(main) => {
                 let id = self.id();
                 let mut mut_guard = main.inner.borrow_mut();
-                if !mut_guard.redraw_pending.contains(&id) {
-                    mut_guard.redraw_pending.push(id);
+                if !mut_guard.state_mut().redraw_pending.contains(&id) {
+                    mut_guard.state_mut().redraw_pending.push(id);
                 }
-                mut_guard.wake_up();
+                unsafe {
+                    let _: () = msg_send![self.ns_view, setNeedsDisplay: YES];
+                    CFRunLoopWakeUp(CFRunLoopGetMain());
+                };
             }
             LoopTarget::Child(_) => unreachable!(),
         }

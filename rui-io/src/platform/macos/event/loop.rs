@@ -1,4 +1,4 @@
-use crate::event::{Flow, InnerLoop};
+use crate::event::{Event, Flow, InnerLoop};
 use crate::platform::event::none_queue::NoneQueue;
 
 pub struct Loop {
@@ -18,9 +18,9 @@ impl InnerLoop for Loop {
         todo!()
     }
 
+    fn init(&mut self, callback: impl FnMut(&Event)) {}
+
     // On macos events can only happen on the main thread
     // Therefore we just return an empty VecDeque
-    fn process(&mut self, _: &Flow) -> &mut Self::Queue {
-        &mut self.queue
-    }
+    fn process(&mut self, _: &Flow) {}
 }

@@ -27,30 +27,30 @@ impl MainLoop {
         &'main mut self,
         mut callback: impl FnMut(&LoopTarget<'main, 'main>, Option<&Event>, &mut Flow),
     ) -> ! {
-        let mut flow = Flow::Wait;
+        let mut flow = Flow::Poll;
         let target = LoopTarget::Main(self);
+        let mut emitted = false;
+        self.inner.borrow_mut().init(|event| {
+            callback(&target, Some(event), &mut flow);
+            emitted = true;
+        });
         let exit_code = loop {
             if let Flow::Exit(exit_code) = flow {
                 break exit_code;
             }
-
-            let events: Vec<Event> = {
+            {
                 let mut mut_guard = self.inner.borrow_mut();
-                (mut_guard.process(&flow) as &mut dyn Queue<Event>)
-                    .as_iter_mut()
-                    .collect()
-            };
-            let event_count = events.len();
-            for event in events {
-                callback(&target, Some(&event), &mut flow);
+                mut_guard.process(&flow);
             }
-            if event_count == 0 {
+            if !emitted {
                 callback(&target, None, &mut flow);
             }
+            // Reset emitted boolean to check if an event was emitted
+            emitted = false;
         };
         {
             let mut child_controls = self.child_loop_controls.write().unwrap();
-            for mut ctx in child_controls.drain(..) {
+            for ctx in child_controls.drain(..) {
                 ctx.signal_exit();
                 let exit_code = ctx.join();
                 if !exit_code.is_success() {

@@ -1,4 +1,3 @@
-use std::os::raw::c_void;
 use cocoa::base::id;
 use cocoa::foundation::{NSInteger, NSUInteger};
 use core_foundation::array::CFArrayRef;
@@ -6,6 +5,7 @@ use core_foundation::string::CFStringRef;
 use core_foundation::uuid::CFUUIDRef;
 use core_graphics::base::CGError;
 use core_graphics::display::{CFDictionaryRef, CGDirectDisplayID, CGDisplayConfigRef};
+use std::os::raw::c_void;
 
 pub const NSNotFound: NSInteger = NSInteger::MAX;
 
@@ -16,12 +16,11 @@ pub struct NSRange {
 }
 
 impl NSRange {
-
     pub const EMPTY_RANGE: NSRange = NSRange {
         location: NSNotFound as NSUInteger,
         length: 0,
     };
-    
+
     #[inline]
     pub fn new(location: NSUInteger, length: NSUInteger) -> NSRange {
         NSRange { location, length }
@@ -218,3 +217,12 @@ extern "C" {
     pub fn CGDisplayModeRetain(mode: CGDisplayModeRef);
     pub fn CGDisplayModeRelease(mode: CGDisplayModeRef);
 }
+
+// Leave the layer's contents alone. Never mark the layer as needing display, or draw the view's contents to the layer
+pub const NSViewLayerContentsRedrawNever: i32 = 0;
+// Map view -setNeedsDisplay...: activity to the layer, and redraw affected layer parts by invoking the view's -drawRect:, but don't mark the view or layer as needing display when the view's size changes.
+pub const NSViewLayerContentsRedrawOnSetNeedsDisplay: i32 = 1;
+// Resize the layer and redraw the view to the layer when the view's size changes. If the resize is animated, AppKit will drive the resize animation itself and will do this resize+redraw at each step of the animation. Affected parts of the layer will also be redrawn when the view is marked as needing display. (This mode is a superset of NSViewLayerContentsRedrawOnSetNeedsDisplay.)
+pub const NSViewLayerContentsRedrawDuringViewResize: i32 = 2;
+// Resize the layer and redraw the view to the layer when the view's size changes. This will be done just once at the beginning of a resize animation, not at each frame of the animation. Affected parts of the layer will also be redrawn when the view is marked as needing display. (This mode is a superset of NSViewLayerContentsRedrawOnSetNeedsDisplay.)
+pub const NSViewLayerContentsRedrawBeforeViewResize: i32 = 3;

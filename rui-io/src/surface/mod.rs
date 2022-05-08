@@ -31,7 +31,7 @@ impl<'main, 'child> Surface<'main, 'child> {
         self.0.id()
     }
 
-    pub fn request_redraw(&self) {
+    pub fn request_redraw(&mut self) {
         self.0.request_redraw()
     }
 }

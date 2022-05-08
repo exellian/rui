@@ -17,6 +17,11 @@ name = "queue"
 path = "benches/queue.rs"
 harness = false
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# wayland-client = "0.29.4"
+wayland-client = "0.29.4"
+smithay-client-toolkit = "0.15.4"
+
 [target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
 objc = "0.2.7"
 

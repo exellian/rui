@@ -53,7 +53,8 @@ async fn main() {
             width: 1440,
             height: 900,
         })
+        .resizable(true)
         .build()
         .await;
-    //surface.mount(component(Root)).await;
+    surface.mount(component(Root)).await;
 }

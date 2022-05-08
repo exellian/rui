@@ -25,7 +25,7 @@ pub struct Surface<'main, 'child> {
     wl_display: Display,
     wl_surface: WlSurface,
     surface_id: SurfaceId,
-    size: Extent
+    window_state: Arc<RefCell<WindowStateShared>>
 }
 
 impl<'main, 'child> Surface<'main, 'child> {
@@ -41,11 +41,10 @@ impl<'main, 'child> Surface<'main, 'child> {
             }
         };
 
-        let mut size_x = attr.current_size.width;
-        let mut size_y = attr.current_size.height;
+        let size_x = attr.current_size.width.clone();
+        let size_y = attr.current_size.height.clone();
 
         let (sender, mut receiver) = oneshot::channel::<()>();
-        let at_least_configured_once = Arc::new(AtomicBool::new(false));
         let win = {
             let mut inner_ml = main_loop.inner.borrow_mut();
             let environment = inner_ml.get_environment();
@@ -55,7 +54,7 @@ impl<'main, 'child> Surface<'main, 'child> {
             let surface = environment
                 .create_surface_with_scale_callback(|dpi, _surface, _dispatch_data| {
                     // todo
-                    println!("dpi changed to {}", dpi);
+                    println!("dpi changed to {:#?}", dpi);
                 })
                 .detach();
 
@@ -78,9 +77,6 @@ impl<'main, 'child> Surface<'main, 'child> {
                     (size_x, size_y),
                     move |event, _| {
                         eprintln!("Got event: {:#?}", event);
-                        //let state = dispatch_data.get::<Surface>().unwrap();
-
-                        let surface = surface_cloned.clone();
                         let window_state_shared = window_state_shared_cloned.clone();
                         let mut window_state_shared_mut = window_state_shared.as_ref().borrow_mut();
 
@@ -92,6 +88,8 @@ impl<'main, 'child> Surface<'main, 'child> {
                                         width: new_size.0,
                                         height: new_size.1
                                     });
+                                    window_state_shared_mut.signal_should_redraw();
+                                    return;
                                 }
 
                                 if !window_state_shared_mut.is_drawen_once() {
@@ -118,17 +116,16 @@ impl<'main, 'child> Surface<'main, 'child> {
             if !attr.title.is_empty() {
                 window.set_title(attr.title.clone());
             }
-            inner_ml.windows.insert(surface_id, WindowState::new(window, window_state_shared)); // :/
+            window.set_app_id(attr.title.clone());
+            window.set_resizable(attr.is_resizable);
+            inner_ml.windows.insert(surface_id, WindowState::new(window, window_state_shared.clone())); // :/
 
             let win = Surface {
                 loop_target: loop_target.clone(),
                 wl_display: inner_ml.wl_display.clone(),
                 wl_surface: surface,
                 surface_id,
-                size: Extent {
-                    width: size_x,
-                    height: size_y,
-                }
+                window_state: window_state_shared
             };
             win
         };
@@ -165,7 +162,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn inner_size(&self) -> Extent {
-        todo!()
+        self.window_state.borrow().get_size()
     }
 
     pub fn id(&self) -> SurfaceId {

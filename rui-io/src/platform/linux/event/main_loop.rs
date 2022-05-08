@@ -23,7 +23,8 @@ default_environment!(MyApp, desktop);
 pub enum NextAction {
     None,
     Refresh,
-    Redraw
+    Redraw,
+    Close
 }
 
 pub struct WindowStateShared {
@@ -44,8 +45,16 @@ impl WindowStateShared {
         self.size = size;
     }
 
+    pub fn get_size(&self) -> Extent {
+        self.size
+    }
+
     pub fn is_drawen_once(&mut self) -> bool {
         self.drawen_once
+    }
+
+    pub fn signal_should_close(&mut self) {
+        self.next_action = NextAction::Close
     }
 
     pub fn signal_drawen_once(&mut self) {
@@ -211,23 +220,35 @@ impl InnerLoop for MainLoop {
         }
         self.wl_display.flush();
 
+        //let mut to_delete;
         //Next action handling
-        for (_, window) in &mut self.windows {
-            let mut shared = window.shared.as_ref().borrow_mut();
-            match shared.take_next_action() {
-                NextAction::None => {}
-                NextAction::Refresh => {
-                    window.window.refresh();
-                    window.window.surface().commit();
-                }
-                NextAction::Redraw => {
-                    shared.signal_drawen_once();
-                    window.window.resize(shared.size.width, shared.size.height);
-                    window.window.refresh();
-                    Surface::redraw(&mut self.pool, window.window.surface(), shared.size.width, shared.size.height)
+
+        let mut followup_map = HashMap::new();
+
+        for (id, mut window) in self.windows.drain() {
+            {
+                let mut shared = window.shared.as_ref().borrow_mut();
+                match shared.take_next_action() {
+                    NextAction::None => {}
+                    NextAction::Refresh => {
+                        window.window.refresh();
+                        window.window.surface().commit();
+                    }
+                    NextAction::Redraw => {
+                        shared.signal_drawen_once();
+                        window.window.resize(shared.size.width, shared.size.height);
+                        window.window.refresh();
+                        Surface::redraw(&mut self.pool, window.window.surface(), shared.size.width, shared.size.height)
+                    }
+                    NextAction::Close => {
+                        continue;
+                    }
                 }
             }
+            followup_map.insert(id, window);
         }
+        self.windows = followup_map;
+        //self.windows.remove(to_delete);
 
         match flow {
             Flow::Wait => {

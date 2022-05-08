@@ -45,6 +45,7 @@ impl Component for Root {
 
 #[rui::main]
 async fn main() {
+    println!("Test");
     let surface = Surface::builder()
         .resizable(true)
         .title("Test")

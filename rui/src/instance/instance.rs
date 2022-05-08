@@ -125,14 +125,16 @@ where
                 None => {}
                 Some(req) => match req {
                     MainLoopRequest::CreateSurface { attr, sender } => {
-                        let surface = rui_io::surface::Surface::new(target, &attr);
-                        let surface_shared_state = Arc::new(RwLock::new(SurfaceSharedState::new(
-                            surface.id(),
-                            attr,
-                            surface.raw_window_handle(),
-                        )));
-                        surfaces.insert(surface.id(), (surface, surface_shared_state.clone()));
-                        sender.send(surface_shared_state);
+                        main_worker.spawn(async {
+                            let surface = rui_io::surface::Surface::new(target, &attr).await;
+                            let surface_shared_state = Arc::new(RwLock::new(SurfaceSharedState::new(
+                                surface.id(),
+                                attr,
+                                surface.raw_window_handle(),
+                            )));
+                            surfaces.insert(surface.id(), (surface, surface_shared_state.clone()));
+                            sender.send(surface_shared_state);
+                        });
                     }
                     MainLoopRequest::MountNode {
                         surface_id,

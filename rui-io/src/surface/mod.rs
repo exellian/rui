@@ -19,8 +19,8 @@ pub mod id;
 pub struct Surface<'main, 'child>(platform::Surface<'main, 'child>);
 
 impl<'main, 'child> Surface<'main, 'child> {
-    pub fn new(loop_target: &EventLoopTarget<'main, 'child>, attr: &SurfaceAttributes) -> Self {
-        Surface(platform::Surface::new(loop_target, &attr))
+    pub async fn new(loop_target: &EventLoopTarget<'main, 'child>, attr: &SurfaceAttributes) -> Surface<'main, 'child> {
+        Surface(platform::Surface::new(loop_target, &attr).await)
     }
 
     pub fn inner_size(&self) -> Extent {

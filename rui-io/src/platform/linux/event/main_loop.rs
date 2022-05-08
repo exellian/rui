@@ -14,7 +14,7 @@ use wayland_client::{EventQueue, ReadEventsGuard};
 default_environment!(MyApp, desktop);
 
 pub struct MainLoop {
-    wl_display: Display,
+    pub(crate) wl_display: Display,
     main_event_queue: EventQueue,
     environment: Environment<MyApp>,
     callback: Option<Rc<RefCell<dyn FnMut(&Event)>>>,
@@ -116,6 +116,7 @@ impl InnerLoop for MainLoop {
             )
         };
         self.callback = Some(callback);
+        (self.callback.as_ref().unwrap().as_ref().borrow_mut())(&Event::Init);
     }
 
     fn process(&mut self, flow: &Flow) {
@@ -134,9 +135,9 @@ impl InnerLoop for MainLoop {
             Flow::Wait => {
                 eprintln!("Inside wait");
                 self.main_event_queue
-                    .sync_roundtrip(&mut (), |raw_event, _, _| {
+                    .dispatch(&mut (), |raw_event, _, _| {
                         eprintln!("Got unhandled raw event: {:#?}", raw_event);
-                    });
+                    }).expect("Could not dispatch event");
             }
             Flow::Poll => {
                 eprintln!("Inside poll");

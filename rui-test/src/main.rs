@@ -55,5 +55,5 @@ async fn main() {
         })
         .build()
         .await;
-    surface.mount(component(Root)).await;
+    //surface.mount(component(Root)).await;
 }

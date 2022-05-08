@@ -8,9 +8,11 @@ use smithay_client_toolkit::shm::{DoubleMemPool, MemPool};
 use smithay_client_toolkit::window::{Event, FallbackFrame, Window};
 use std::io::{BufWriter, Write};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use wayland_client::Display;
 use wayland_client::protocol::wl_surface::WlSurface;
 use rui_util::alloc::oneshot;
+use crate::platform::event::{WindowState, WindowStateShared};
 
 enum NextAction {
     Refresh,
@@ -22,13 +24,8 @@ pub struct Surface<'main, 'child> {
     loop_target: LoopTarget<'main, 'child>,
     wl_display: Display,
     wl_surface: WlSurface,
-    window: Window<FallbackFrame>,
-    close_requested: bool,
-    refresh_requested: bool,
-    size: Extent,
-    next_action: Option<NextAction>,
-    has_drawn_once: bool,
-    pool: AutoMemPool,
+    surface_id: SurfaceId,
+    size: Extent
 }
 
 impl<'main, 'child> Surface<'main, 'child> {
@@ -40,7 +37,7 @@ impl<'main, 'child> Surface<'main, 'child> {
         let main_loop = match loop_target {
             LoopTarget::Main(ml) => *ml,
             LoopTarget::Child(_) => {
-                panic!("Not supporting surface creation on non main thread for know!");
+                panic!("Not supporting surface creation on non main thread for now!");
             }
         };
 
@@ -48,9 +45,9 @@ impl<'main, 'child> Surface<'main, 'child> {
         let mut size_y = attr.current_size.height;
 
         let (sender, mut receiver) = oneshot::channel::<()>();
-
+        let at_least_configured_once = Arc::new(AtomicBool::new(false));
         let win = {
-            let inner_ml = main_loop.inner.borrow();
+            let mut inner_ml = main_loop.inner.borrow_mut();
             let environment = inner_ml.get_environment();
             if !environment.get_shell().unwrap().needs_configure() {
                 eprintln!("Shell needs configure from us!");
@@ -62,60 +59,48 @@ impl<'main, 'child> Surface<'main, 'child> {
                 })
                 .detach();
 
-            let mut pool = environment
-                .create_auto_pool()
-                .expect("Could not create buffer pool");
 
+            let surface_id = Self::surface_id(&surface);
 
+            let window_state_shared = Arc::new(RefCell::new(WindowStateShared::new(Extent {
+                width: size_x,
+                height: size_y
+            })));
 
             let sender_arc = Arc::new(RefCell::new(Some(sender)));
-            let env = environment.clone();
             let surface_cloned = surface.clone();
+            let window_state_shared_cloned = window_state_shared.clone();
+
             let window = environment
                 .create_window::<FallbackFrame, _>(
                     surface.clone(),
                     None,
                     (size_x, size_y),
-                    move |event, mut _dispatch_data| {
+                    move |event, _| {
                         eprintln!("Got event: {:#?}", event);
                         //let state = dispatch_data.get::<Surface>().unwrap();
 
+                        let surface = surface_cloned.clone();
+                        let window_state_shared = window_state_shared_cloned.clone();
+                        let mut window_state_shared_mut = window_state_shared.as_ref().borrow_mut();
+
                         match event {
                             Event::Configure { new_size, states } => {
-                                let mut sender = sender_arc.clone();
-                                let surface = surface_cloned.clone();
-                                let mut pool = env
-                                    .create_auto_pool()
-                                    .expect("Could not create buffer pool");
-                                if let Some(new_size) = new_size {
-                                    size_x = new_size.0;
-                                    size_y = new_size.1;
-                                }
-                                let mut buffer = pool
-                                    .buffer(
-                                        size_x as i32,
-                                        size_y as i32,
-                                        (size_x * 4) as i32,
-                                        Format::Argb8888,
-                                    )
-                                    .expect("Could not create buffer");
 
-                                {
-                                    let pxcount = size_x * size_y;
-                                    let mut writer = BufWriter::new(buffer.0);
-                                    let pixel: u32 = 0xFF_23_23_16;
-                                    for _ in 0..pxcount {
-                                        writer.write_all(&pixel.to_ne_bytes()).unwrap();
-                                    }
-                                    writer.flush().unwrap();
+                                if let Some(new_size) = new_size {
+                                    window_state_shared_mut.set_size(Extent {
+                                        width: new_size.0,
+                                        height: new_size.1
+                                    });
                                 }
-                                surface.attach(Some(&buffer.1), 0, 0);
-                                surface
-                                    .damage_buffer(0, 0, size_x as i32, size_y as i32);
-                                surface.commit();
-                                { println!("Surface content: {:#?}", surface); }
-                                let sender = sender.as_ref().borrow_mut().take().unwrap();
-                                sender.send(());
+
+                                if !window_state_shared_mut.is_drawen_once() {
+                                    window_state_shared_mut.signal_should_redraw();
+                                    let sender = sender_arc.as_ref().borrow_mut().take().unwrap();
+                                    sender.send(());
+                                } else {
+                                    window_state_shared_mut.signal_should_refresh();
+                                }
                             }
                             Event::Close => {
                                 //state.close_requested = true;
@@ -123,6 +108,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                             Event::Refresh => {
                                 //state.refresh_requested = true;
                                 //state.window.refresh();
+                                window_state_shared_mut.signal_should_refresh();
                             }
                         }
                     },
@@ -132,21 +118,17 @@ impl<'main, 'child> Surface<'main, 'child> {
             if !attr.title.is_empty() {
                 window.set_title(attr.title.clone());
             }
+            inner_ml.windows.insert(surface_id, WindowState::new(window, window_state_shared)); // :/
+
             let win = Surface {
                 loop_target: loop_target.clone(),
                 wl_display: inner_ml.wl_display.clone(),
                 wl_surface: surface,
-                window,
-                close_requested: false,
-                refresh_requested: false,
+                surface_id,
                 size: Extent {
                     width: size_x,
                     height: size_y,
-                },
-                next_action: None,
-
-                has_drawn_once: false,
-                pool,
+                }
             };
             win
         };
@@ -159,7 +141,7 @@ impl<'main, 'child> Surface<'main, 'child> {
             .buffer(
                 size_x as i32,
                 size_y as i32,
-                (size_y * 4) as i32,
+                (size_x * 4) as i32,
                 Format::Argb8888,
             )
             .expect("Could not create buffer");
@@ -167,7 +149,7 @@ impl<'main, 'child> Surface<'main, 'child> {
         {
             let pxcount = size_x * size_y;
             let mut writer = BufWriter::new(&mut buffer.0);
-            let pixel: u32 = 0xFF_D0_00_00;
+            let pixel: u32 = 0xFF_7C_7C_7C;
             for _ in 0..pxcount {
                 writer.write_all(&pixel.to_ne_bytes()).unwrap();
             }
@@ -178,17 +160,20 @@ impl<'main, 'child> Surface<'main, 'child> {
         surface.commit();
     }
 
+    fn surface_id(surface: &WlSurface) -> SurfaceId {
+        SurfaceId::from(surface.as_ref().id() as u64)
+    }
+
     pub fn inner_size(&self) -> Extent {
-        self.size.clone()
+        todo!()
     }
 
     pub fn id(&self) -> SurfaceId {
-        // todo
-        SurfaceId::from(23)
+        self.surface_id
     }
 
     pub fn request_redraw(&mut self) {
-        self.refresh_requested = true;
+        //self.refresh_requested = true;
     }
 }
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {

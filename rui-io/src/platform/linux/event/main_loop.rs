@@ -6,16 +6,88 @@ use smithay_client_toolkit::shell::Shell;
 use smithay_client_toolkit::window::{Event as WEvent, FallbackFrame, State, Window};
 use smithay_client_toolkit::{default_environment, new_default_environment};
 use std::borrow::BorrowMut;
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, RefCell, RefMut};
+use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use smithay_client_toolkit::shm::AutoMemPool;
 use wayland_client::{EventQueue, ReadEventsGuard};
+use rui_util::Extent;
+use crate::platform::Surface;
+use crate::surface::SurfaceId;
 
 default_environment!(MyApp, desktop);
+
+pub enum NextAction {
+    None,
+    Refresh,
+    Redraw
+}
+
+pub struct WindowStateShared {
+    next_action: NextAction,
+    drawen_once: bool,
+    size: Extent
+}
+impl WindowStateShared {
+    pub fn new(size: Extent) -> Self {
+        WindowStateShared {
+            next_action: NextAction::None,
+            drawen_once: false,
+            size
+        }
+    }
+
+    pub fn set_size(&mut self, size: Extent) {
+        self.size = size;
+    }
+
+    pub fn is_drawen_once(&mut self) -> bool {
+        self.drawen_once
+    }
+
+    pub fn signal_drawen_once(&mut self) {
+        self.drawen_once = true;
+    }
+
+    pub fn signal_should_redraw(&mut self) {
+        self.next_action = NextAction::Redraw
+    }
+
+    pub fn signal_should_refresh(&mut self) {
+        self.next_action = NextAction::Refresh
+    }
+
+    pub fn take_next_action(&mut self) -> NextAction {
+        let mut next = NextAction::None;
+        mem::swap(&mut next, &mut self.next_action);
+        next
+    }
+}
+
+pub struct WindowState {
+    pub(crate) window: Window<FallbackFrame>,
+    shared: Arc<RefCell<WindowStateShared>>
+}
+
+impl WindowState {
+
+    pub fn new(window: Window<FallbackFrame>, shared: Arc<RefCell<WindowStateShared>>) -> Self {
+        WindowState {
+            window,
+            shared
+        }
+    }
+
+}
 
 pub struct MainLoop {
     pub(crate) wl_display: Display,
     main_event_queue: EventQueue,
+    pub(crate) windows: HashMap<SurfaceId, WindowState>,
+    pool: AutoMemPool,
     environment: Environment<MyApp>,
     callback: Option<Rc<RefCell<dyn FnMut(&Event)>>>,
 }
@@ -88,9 +160,15 @@ impl MainLoop {
         #[cfg(debug_assertions)]
         debug_printout(&environment);
 
+        let pool = environment
+            .create_auto_pool()
+            .expect("Could not create memory pool!");
+
         MainLoop {
             wl_display: display,
             main_event_queue: queue,
+            windows: HashMap::new(),
+            pool,
             environment,
             callback: None,
         }
@@ -120,10 +198,11 @@ impl InnerLoop for MainLoop {
     }
 
     fn process(&mut self, flow: &Flow) {
-        eprintln!(
+        /*eprintln!(
             "Inside Main Loop. Wayland connection is alive: {}",
             self.wl_display.is_alive()
-        );
+        );*/
+
         if let Some(err) = self.wl_display.protocol_error() {
             eprintln!(
                 "Protocoll error:\nCode: {}\nMessage: {}\nObject Id: {}\nObject Interface: {}",
@@ -131,33 +210,65 @@ impl InnerLoop for MainLoop {
             );
         }
         self.wl_display.flush();
+
+        //Next action handling
+        for (_, window) in &mut self.windows {
+            let mut shared = window.shared.as_ref().borrow_mut();
+            match shared.take_next_action() {
+                NextAction::None => {}
+                NextAction::Refresh => {
+                    window.window.refresh();
+                    window.window.surface().commit();
+                }
+                NextAction::Redraw => {
+                    shared.signal_drawen_once();
+                    window.window.resize(shared.size.width, shared.size.height);
+                    window.window.refresh();
+                    Surface::redraw(&mut self.pool, window.window.surface(), shared.size.width, shared.size.height)
+                }
+            }
+        }
+
         match flow {
             Flow::Wait => {
-                eprintln!("Inside wait");
-                self.main_event_queue
+                //eprintln!("Inside wait");
+                match self.main_event_queue
                     .dispatch(&mut (), |raw_event, _, _| {
                         eprintln!("Got unhandled raw event: {:#?}", raw_event);
-                    }).expect("Could not dispatch event");
+                    }) {
+                    Ok(_) => {}
+                    Err(_) => {
+                        eprintln!("Could not dispatch data!");
+                        if let Some(err) = self.wl_display.protocol_error() {
+                            eprintln!(
+                                "Protocoll error:\nCode: {}\nMessage: {}\nObject Id: {}\nObject Interface: {}",
+                                err.code, err.message, err.object_id, err.object_interface
+                            );
+                        }
+                    }
+                }
             }
             Flow::Poll => {
+                /*
                 eprintln!("Inside poll");
                 if let Err(e) = self.wl_display.flush() {
                     if e.kind() != ::std::io::ErrorKind::WouldBlock {
                         eprintln!("Error while trying to flush the wayland socket: {:?}", e);
                     }
-                }
+                }*/
 
-                eprintln!("Inside poll inb4 prepare_read");
+                //eprintln!("Inside poll inb4 prepare_read");
+                //eprintln!("Inside poll inb4 prepare_read");
                 if let Some(guard) = self.main_event_queue.prepare_read() {
                     match guard.read_events() {
                         Ok(_) => {
-                            eprintln!("Successfully read events from queue")
+                            //eprintln!("Successfully read events from queue")
                         }
                         Err(e) => {
                             eprintln! {"Got error when reading events from queue: {}", e}
                         }
                     }
-                    eprintln!("Inside poll inb4 dispatch_pending");
+                    //eprintln!("Inside poll inb4 dispatch_pending");
                     self.main_event_queue
                         .dispatch_pending(&mut (), |raw_event, _, _| {
                             eprintln!("Got unhandled raw event: {:#?}", raw_event);
@@ -165,9 +276,7 @@ impl InnerLoop for MainLoop {
                         .expect("Failed to dispatch all messages.");
                 }
             }
-            Flow::Exit(_) => {
-                return;
-            }
+            Flow::Exit(_) => unreachable!()
         }
     }
 }

@@ -1,18 +1,18 @@
-use std::cell::RefCell;
 use crate::event::LoopTarget;
+use crate::platform::event::{WindowState, WindowStateShared};
 use crate::surface::{SurfaceAttributes, SurfaceId};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, WaylandHandle};
+use rui_util::alloc::oneshot;
 use rui_util::Extent;
 use smithay_client_toolkit::shm::{AutoMemPool, Format};
 use smithay_client_toolkit::shm::{DoubleMemPool, MemPool};
 use smithay_client_toolkit::window::{Event, FallbackFrame, Window};
+use std::cell::RefCell;
 use std::io::{BufWriter, Write};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use wayland_client::Display;
+use std::sync::Arc;
 use wayland_client::protocol::wl_surface::WlSurface;
-use rui_util::alloc::oneshot;
-use crate::platform::event::{WindowState, WindowStateShared};
+use wayland_client::Display;
 
 enum NextAction {
     Refresh,
@@ -25,7 +25,7 @@ pub struct Surface<'main, 'child> {
     wl_display: Display,
     wl_surface: WlSurface,
     surface_id: SurfaceId,
-    window_state: Arc<RefCell<WindowStateShared>>
+    window_state: Arc<RefCell<WindowStateShared>>,
 }
 
 impl<'main, 'child> Surface<'main, 'child> {
@@ -58,12 +58,11 @@ impl<'main, 'child> Surface<'main, 'child> {
                 })
                 .detach();
 
-
             let surface_id = Self::surface_id(&surface);
 
             let window_state_shared = Arc::new(RefCell::new(WindowStateShared::new(Extent {
                 width: size_x,
-                height: size_y
+                height: size_y,
             })));
 
             let sender_arc = Arc::new(RefCell::new(Some(sender)));
@@ -82,11 +81,10 @@ impl<'main, 'child> Surface<'main, 'child> {
 
                         match event {
                             Event::Configure { new_size, states } => {
-
                                 if let Some(new_size) = new_size {
                                     window_state_shared_mut.set_size(Extent {
                                         width: new_size.0,
-                                        height: new_size.1
+                                        height: new_size.1,
                                     });
                                     window_state_shared_mut.signal_should_redraw();
                                     return;
@@ -118,14 +116,17 @@ impl<'main, 'child> Surface<'main, 'child> {
             }
             window.set_app_id(attr.title.clone());
             window.set_resizable(attr.is_resizable);
-            inner_ml.windows.insert(surface_id, WindowState::new(window, window_state_shared.clone())); // :/
+            inner_ml.windows.insert(
+                surface_id,
+                WindowState::new(window, window_state_shared.clone()),
+            ); // :/
 
             let win = Surface {
                 loop_target: loop_target.clone(),
                 wl_display: inner_ml.wl_display.clone(),
                 wl_surface: surface,
                 surface_id,
-                window_state: window_state_shared
+                window_state: window_state_shared,
             };
             win
         };
@@ -134,6 +135,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn redraw(pool: &mut AutoMemPool, surface: &WlSurface, size_x: u32, size_y: u32) {
+        return;
         let mut buffer = pool
             .buffer(
                 size_x as i32,
@@ -170,7 +172,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn request_redraw(&mut self) {
-       self.window_state.borrow_mut().signal_should_redraw();
+        self.window_state.borrow_mut().signal_should_redraw();
     }
 }
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {

@@ -1,8 +1,12 @@
 use crate::event::queue::Dequeue;
 use crate::event::{Event, Flow, InnerLoop};
+use crate::platform::Surface;
+use crate::surface::SurfaceId;
+use rui_util::Extent;
 use smithay_client_toolkit::environment::Environment;
 use smithay_client_toolkit::reexports::client::{Attached, DispatchData, Display};
 use smithay_client_toolkit::shell::Shell;
+use smithay_client_toolkit::shm::AutoMemPool;
 use smithay_client_toolkit::window::{Event as WEvent, FallbackFrame, State, Window};
 use smithay_client_toolkit::{default_environment, new_default_environment};
 use std::borrow::BorrowMut;
@@ -10,13 +14,9 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use smithay_client_toolkit::shm::AutoMemPool;
+use std::sync::Arc;
 use wayland_client::{EventQueue, ReadEventsGuard};
-use rui_util::Extent;
-use crate::platform::Surface;
-use crate::surface::SurfaceId;
 
 default_environment!(MyApp, desktop);
 
@@ -24,20 +24,21 @@ pub enum NextAction {
     None,
     Refresh,
     Redraw,
-    Close
+    Resize,
+    Close,
 }
 
 pub struct WindowStateShared {
     next_action: NextAction,
     drawen_once: bool,
-    size: Extent
+    size: Extent,
 }
 impl WindowStateShared {
     pub fn new(size: Extent) -> Self {
         WindowStateShared {
             next_action: NextAction::None,
             drawen_once: false,
-            size
+            size,
         }
     }
 
@@ -69,6 +70,10 @@ impl WindowStateShared {
         self.next_action = NextAction::Refresh
     }
 
+    pub fn signal_should_resize(&mut self) {
+        self.next_action = NextAction::Resize
+    }
+
     pub fn take_next_action(&mut self) -> NextAction {
         let mut next = NextAction::None;
         mem::swap(&mut next, &mut self.next_action);
@@ -78,18 +83,13 @@ impl WindowStateShared {
 
 pub struct WindowState {
     pub(crate) window: Window<FallbackFrame>,
-    shared: Arc<RefCell<WindowStateShared>>
+    shared: Arc<RefCell<WindowStateShared>>,
 }
 
 impl WindowState {
-
     pub fn new(window: Window<FallbackFrame>, shared: Arc<RefCell<WindowStateShared>>) -> Self {
-        WindowState {
-            window,
-            shared
-        }
+        WindowState { window, shared }
     }
-
 }
 
 pub struct MainLoop {
@@ -236,12 +236,29 @@ impl InnerLoop for MainLoop {
                     }
                     NextAction::Redraw => {
                         shared.signal_drawen_once();
-                        window.window.resize(shared.size.width, shared.size.height);
-                        window.window.refresh();
-                        Surface::redraw(&mut self.pool, window.window.surface(), shared.size.width, shared.size.height)
+                        // Surface::redraw(&mut self.pool, window.window.surface(), shared.size.width, shared.size.height)
+                        (self.callback.as_ref().unwrap().as_ref().borrow_mut())(
+                            &Event::SurfaceEvent {
+                                id,
+                                event: crate::surface::event::Event::Redraw,
+                            },
+                        );
                     }
                     NextAction::Close => {
                         continue;
+                    }
+                    NextAction::Resize => {
+                        window.window.resize(shared.size.width, shared.size.height);
+                        window.window.refresh();
+                        /*(self.callback.as_ref().unwrap().as_ref().borrow_mut())(
+                            &Event::SurfaceEvent {
+                                id,
+                                event: crate::surface::event::Event::Resized(Extent {
+                                    width: shared.size.width,
+                                    height: shared.size.height,
+                                }),
+                            },
+                        );*/
                     }
                 }
             }
@@ -253,10 +270,9 @@ impl InnerLoop for MainLoop {
         match flow {
             Flow::Wait => {
                 //eprintln!("Inside wait");
-                match self.main_event_queue
-                    .dispatch(&mut (), |raw_event, _, _| {
-                        eprintln!("Got unhandled raw event: {:#?}", raw_event);
-                    }) {
+                match self.main_event_queue.dispatch(&mut (), |raw_event, _, _| {
+                    eprintln!("Got unhandled raw event: {:#?}", raw_event);
+                }) {
                     Ok(_) => {}
                     Err(_) => {
                         eprintln!("Could not dispatch data!");
@@ -297,7 +313,7 @@ impl InnerLoop for MainLoop {
                         .expect("Failed to dispatch all messages.");
                 }
             }
-            Flow::Exit(_) => unreachable!()
+            Flow::Exit(_) => unreachable!(),
         }
     }
 }

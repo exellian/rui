@@ -13,13 +13,16 @@ use crate::platform;
 
 mod attributes;
 mod error;
-mod event;
+pub(crate) mod event;
 pub mod id;
 
 pub struct Surface<'main, 'child>(platform::Surface<'main, 'child>);
 
 impl<'main, 'child> Surface<'main, 'child> {
-    pub async fn new(loop_target: &EventLoopTarget<'main, 'child>, attr: &SurfaceAttributes) -> Surface<'main, 'child> {
+    pub async fn new(
+        loop_target: &EventLoopTarget<'main, 'child>,
+        attr: &SurfaceAttributes,
+    ) -> Surface<'main, 'child> {
         Surface(platform::Surface::new(loop_target, &attr).await)
     }
 

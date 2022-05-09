@@ -19,7 +19,7 @@ pub use r#loop::Loop as EventLoop;
 
 pub use loop_target::LoopTarget;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {
     Init,
     SurfaceEvent { id: SurfaceId, event: SurfaceEvent },

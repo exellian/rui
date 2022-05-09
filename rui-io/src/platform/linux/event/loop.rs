@@ -14,7 +14,11 @@ impl InnerLoop for Loop {
         todo!()
     }
 
-    fn process(&mut self, _: &Flow) -> &mut Self::Queue {
+    fn init(&mut self, callback: impl FnMut(&Event)) {
+        todo!()
+    }
+
+    fn process(&mut self, flow: &Flow) {
         todo!()
     }
 }

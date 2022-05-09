@@ -111,7 +111,7 @@ where
                     rb @ None => {
                         let backend_bits =
                             wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
-                        let instance = wgpu::Instance::new(backend_bits);
+                        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
 
                         // Creating a surface first before creating the base, so that
                         // the base can use it to find a suitable adapter (GPU)

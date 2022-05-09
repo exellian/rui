@@ -15,6 +15,9 @@
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 extern crate objc;
 
+#[cfg(target_os = "linux")]
+extern crate smithay_client_toolkit;
+
 #[macro_use]
 extern crate lazy_static;
 

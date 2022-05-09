@@ -243,6 +243,8 @@ impl InnerLoop for MainLoop {
                                 event: crate::surface::event::Event::Redraw,
                             },
                         );
+                        window.window.refresh();
+                        window.window.surface().commit();
                     }
                     NextAction::Close => {
                         continue;
@@ -250,7 +252,7 @@ impl InnerLoop for MainLoop {
                     NextAction::Resize => {
                         window.window.resize(shared.size.width, shared.size.height);
                         window.window.refresh();
-                        /*(self.callback.as_ref().unwrap().as_ref().borrow_mut())(
+                        (self.callback.as_ref().unwrap().as_ref().borrow_mut())(
                             &Event::SurfaceEvent {
                                 id,
                                 event: crate::surface::event::Event::Resized(Extent {
@@ -258,7 +260,8 @@ impl InnerLoop for MainLoop {
                                     height: shared.size.height,
                                 }),
                             },
-                        );*/
+                        );
+                        window.window.surface().commit();
                     }
                 }
             }

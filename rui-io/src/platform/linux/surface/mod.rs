@@ -86,7 +86,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                                         width: new_size.0,
                                         height: new_size.1,
                                     });
-                                    window_state_shared_mut.signal_should_redraw();
+                                    window_state_shared_mut.signal_should_resize();
                                     return;
                                 }
 

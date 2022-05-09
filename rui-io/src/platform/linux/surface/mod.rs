@@ -170,7 +170,7 @@ impl<'main, 'child> Surface<'main, 'child> {
     }
 
     pub fn request_redraw(&mut self) {
-        //self.refresh_requested = true;
+       self.window_state.borrow_mut().signal_should_redraw();
     }
 }
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {

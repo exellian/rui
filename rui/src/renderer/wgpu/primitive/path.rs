@@ -8,6 +8,7 @@ pub struct PathSegment {
     pub param2: [f32; 2],
     pub param3: [f32; 2],
 }
+#[allow(dead_code)]
 impl PathSegment {
     pub const LINEAR: u32 = 0;
     pub const ARC: u32 = 1;

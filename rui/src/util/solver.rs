@@ -1,4 +1,5 @@
 #[inline]
+#[allow(dead_code)] //todo
 pub fn solve_quadratic(a: f32, b: f32, c: f32) -> (f32, f32) {
     let _2 = f32::from(2i16);
     let _4 = f32::from(4i16);
@@ -10,6 +11,7 @@ pub fn solve_quadratic(a: f32, b: f32, c: f32) -> (f32, f32) {
 }
 
 #[inline]
+#[allow(dead_code)] // todo
 pub fn solve_cubic(a: f32, b: f32, c: f32, d: f32) -> (f32, Option<f32>, Option<f32>) {
     if a == 0. {
         let x = solve_quadratic(b, c, d);
@@ -62,6 +64,7 @@ pub fn solve_cubic(a: f32, b: f32, c: f32, d: f32) -> (f32, Option<f32>, Option<
 }
 
 #[inline]
+#[allow(dead_code)] //todo
 pub fn cubic_bezier(
     x: f32,
     p0: (f32, f32),

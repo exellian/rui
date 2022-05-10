@@ -1,14 +1,8 @@
 use crate::node::Node;
-use crate::surface::Surface;
 use crate::Backend;
-use async_trait::async_trait;
-use rui_io::surface::SurfaceId;
 use rui_util::Extent;
 use std::error::Error;
 use std::fmt::Debug;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
 
 pub trait Renderer<B>
 where

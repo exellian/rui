@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::RawWindowHandle;
 
 use crate::error::Error;
 pub use builder::Builder as SurfaceBuilder;

@@ -1,6 +1,5 @@
 use crate::scheduler::task::task::Task;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::task::RawWakerVTable;
 
@@ -30,14 +29,14 @@ impl RawWaker {
         Self::raw_waker::<F>(NonNull::new_unchecked(data as *mut _))
     }
 
-    unsafe fn drop_waker<F>(data: *const ())
+    unsafe fn drop_waker<F>(_data: *const ())
     where
         F: Future, //+ 'scheduler
     {
         //harness.drop_reference();
     }
 
-    unsafe fn wake_by_val<F>(data: *const ())
+    unsafe fn wake_by_val<F>(_data: *const ())
     where
         F: Future, //+ 'scheduler
     {
@@ -46,7 +45,7 @@ impl RawWaker {
     }
 
     // Wake without consuming the waker
-    unsafe fn wake_by_ref<F>(data: *const ())
+    unsafe fn wake_by_ref<F>(_data: *const ())
     where
         F: Future, //+ 'scheduler
     {

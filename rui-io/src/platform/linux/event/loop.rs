@@ -1,5 +1,4 @@
 use crate::event::{Event, Flow, InnerLoop};
-use std::collections::VecDeque;
 
 pub struct Loop {}
 
@@ -14,11 +13,11 @@ impl InnerLoop for Loop {
         todo!()
     }
 
-    fn init(&mut self, callback: impl FnMut(&Event)) {
+    fn init(&mut self, _callback: impl FnMut(&Event)) {
         todo!()
     }
 
-    fn process(&mut self, flow: &Flow) {
+    fn process(&mut self, _flow: &Flow) {
         todo!()
     }
 }

@@ -1,6 +1,5 @@
 use crate::renderer::wgpu::primitive;
 use crate::util::Resource;
-use image::load;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
@@ -8,6 +7,7 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::BindGroupLayout;
 use wgpu_types::BufferUsages;
 
+#[allow(dead_code)]
 pub struct Texture {
     texture: wgpu::Texture,
     texture_view: wgpu::TextureView,

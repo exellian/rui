@@ -1,6 +1,4 @@
 use crate::renderer::wgpu::primitive;
-use crate::renderer::wgpu::primitive::Paths;
-use crate::util::PathSegment;
 use alloc::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu_types::BufferUsages;
@@ -37,11 +35,6 @@ impl Instance {
             ],
         }
     }
-}
-
-pub struct Path {
-    path: primitive::Path,
-    buffer: wgpu::Buffer,
 }
 
 pub struct PathPipeline {

@@ -3,13 +3,11 @@ use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
 use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
 use crate::renderer::wgpu::primitive;
-use crate::surface::Surface;
 use crate::util::{Flags, PathSegment, Rect};
 use crate::{Backend, Node};
 use async_recursion::async_recursion;
 use rui_util::Extent;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 pub struct RenderJob<B>
 where
@@ -89,6 +87,7 @@ where
                 color: base.background.as_raw(),
                 radii: base.border_radii,
             }),
+            #[allow(unused_variables)]
             Node::Border(base, b) => {
                 Self::flatten(root, parent, b.node_mut(), rects, images, paths).await;
             }
@@ -109,9 +108,11 @@ where
                                 param3: [0.0, 0.0],
                             }
                         }
+                        #[allow(unused_variables)]
                         PathSegment::Arc { to, radii } => {
                             panic!()
                         }
+                        #[allow(unused_variables)]
                         PathSegment::QuadraticBezier { to, param } => {
                             panic!()
                         }
@@ -149,6 +150,7 @@ where
                 },
                 resource: i.resource().clone(),
             }),
+            #[allow(unused_variables)]
             Node::Text(_, t) => {
                 todo!()
             }

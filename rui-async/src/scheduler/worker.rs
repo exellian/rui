@@ -31,10 +31,12 @@ impl<'scheduler> Worker<'scheduler> {
         self.inner.poll()
     }
 
+    #[allow(unused)]
     pub(crate) fn try_steal(&self) -> Option<RawTask> {
         self.inner.try_steal()
     }
 
+    #[allow(unused_unsafe)]
     pub(crate) fn inner_any(&self) -> NonNull<()> {
         unsafe { NonNull::from(self.inner.as_ref()).cast() }
     }

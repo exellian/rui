@@ -2,7 +2,7 @@ use crate::event::exit_code::ExitCode;
 use crate::event::loop_state::LoopStateRef;
 use crate::event::loop_target::LoopTarget;
 use crate::event::main_loop::MainLoop;
-use crate::event::{Event, Flow, InnerLoop, Queue};
+use crate::event::{Event, Flow, InnerLoop};
 use crate::platform;
 
 /// Loop is the handle to for a child event loop. Read more about the relationship between the main
@@ -35,16 +35,16 @@ impl<'main> Loop<'main> {
     ///
     ///  - [&'child mut self](mut self) Requires a mutable reference to self
     ///  // TODO!
+    #[allow(unused_mut)]
     pub fn run<'child>(
         self: &'child mut Self,
-        mut callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow),
+        mut _callback: impl FnMut(&LoopTarget<'main, 'child>, Option<&Event>, &mut Flow),
     ) -> ExitCode
     where
         'child: 'main,
     {
         let mut inner = platform::event::Loop::new();
         let mut flow = Flow::Wait;
-        let mut target = LoopTarget::Child(self);
         self.state.start_weak();
         let exit_code = loop {
             if let Flow::Exit(exit_code) = flow {

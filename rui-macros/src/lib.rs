@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
-use syn::parse_quote::ParseQuote;
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, Ident, ItemFn, ReturnType, Signature, Token};
 
@@ -24,6 +23,7 @@ impl Parse for NamedArg {
     }
 }
 
+#[allow(dead_code)]
 struct NamedArgs {
     args: HashMap<Ident, Ident>,
 }
@@ -57,9 +57,8 @@ fn has_generics(sig: &Signature) -> bool {
 }
 
 #[proc_macro_attribute]
-pub fn main(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn main(_args: TokenStream, item: TokenStream) -> TokenStream {
     let main = parse_macro_input!(item as ItemFn);
-    let args = parse_macro_input!(args as NamedArgs);
     if main.sig.asyncness.is_none() {
         panic!("Rui main must be an async function!");
     }

@@ -2,7 +2,6 @@ use crate::surface::Surface;
 use rui_io::surface::{Modality, SurfaceAttributes, WindowState};
 use rui_util::point::Point;
 use rui_util::Extent;
-use std::borrow::Cow;
 
 pub struct Builder {
     attributes: SurfaceAttributes,

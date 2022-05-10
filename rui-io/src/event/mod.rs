@@ -14,7 +14,6 @@ pub use flow::Flow;
 pub(crate) use inner_loop::InnerLoop;
 pub use loop_target::LoopTarget as EventLoopTarget;
 pub use main_loop::MainLoop as MainEventLoop;
-pub(crate) use queue::Queue;
 pub use r#loop::Loop as EventLoop;
 
 pub use loop_target::LoopTarget;

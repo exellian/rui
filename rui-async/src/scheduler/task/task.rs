@@ -2,7 +2,6 @@ use crate::scheduler::task::output::Output;
 use crate::scheduler::task::Status;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 

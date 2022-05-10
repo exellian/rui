@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Instant;
 
 use rui_io::surface::SurfaceId;
 use rui_util::{be, bs, Extent};
@@ -209,7 +208,7 @@ where
     }
 
     fn request_render(&self) -> Result<(), Self::Error> {
-        for (_, job) in &self.jobs {
+        for (_, _job) in &self.jobs {
             //job.surface_adapter.request_redraw();
         }
         Ok(())

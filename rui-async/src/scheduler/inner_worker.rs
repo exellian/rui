@@ -4,7 +4,6 @@ use rui_util::alloc::spmc;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::task::{Context, Waker};
 
 pub struct InnerWorker<'scheduler> {
     id: usize,

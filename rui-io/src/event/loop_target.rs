@@ -39,7 +39,7 @@ where
                     .spawn_unchecked(move || {
                         // This is only safe because we ae making sure that the main loop was created before
                         // any other child thread and that the main loop lives the longest
-                        let main = unsafe { main_ptr.as_ref() };
+                        let main = main_ptr.as_ref();
                         let local_loop = Loop::new(main, loop_state_ret);
                         callback(&local_loop)
                     })

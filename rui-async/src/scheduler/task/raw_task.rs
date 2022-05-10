@@ -24,14 +24,14 @@ impl RawTask {
     where
         F: Future, //+ 'scheduler
     {
-        let task = unsafe { NonNull::new_unchecked(Box::into_raw(Box::new(task))) };
+        let task = NonNull::new_unchecked(Box::into_raw(Box::new(task)));
         RawTask {
             task: task.cast(),
             vtable: VTable {
                 poll: Self::_poll::<F>,
                 drop: Self::_drop::<F>,
             },
-            waker: unsafe { RawWaker::new_unchecked(task) },
+            waker: RawWaker::new_unchecked(task),
         }
     }
 

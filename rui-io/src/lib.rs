@@ -18,7 +18,6 @@ extern crate objc;
 #[cfg(target_os = "linux")]
 extern crate smithay_client_toolkit;
 
-#[macro_use]
 extern crate lazy_static;
 
 /// This module contains the low level implementation of an event loop aswell as a definition

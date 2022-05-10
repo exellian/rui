@@ -1,22 +1,17 @@
-use crate::event::queue::Dequeue;
 use crate::event::{Event, Flow, InnerLoop};
-use crate::platform::Surface;
 use crate::surface::SurfaceId;
 use rui_util::Extent;
 use smithay_client_toolkit::environment::Environment;
-use smithay_client_toolkit::reexports::client::{Attached, DispatchData, Display};
+use smithay_client_toolkit::reexports::client::Display;
 use smithay_client_toolkit::shell::Shell;
-use smithay_client_toolkit::shm::AutoMemPool;
-use smithay_client_toolkit::window::{Event as WEvent, FallbackFrame, State, Window};
+use smithay_client_toolkit::window::{FallbackFrame, Window};
 use smithay_client_toolkit::{default_environment, new_default_environment};
-use std::borrow::BorrowMut;
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use wayland_client::{EventQueue, ReadEventsGuard};
+use wayland_client::EventQueue;
 
 default_environment!(MyApp, desktop);
 
@@ -96,7 +91,6 @@ pub struct MainLoop {
     pub(crate) wl_display: Display,
     main_event_queue: EventQueue,
     pub(crate) windows: HashMap<SurfaceId, WindowState>,
-    pool: AutoMemPool,
     environment: Environment<MyApp>,
     callback: Option<Rc<RefCell<dyn FnMut(&Event)>>>,
 }
@@ -164,20 +158,15 @@ fn debug_printout(environment: &Environment<MyApp>) {
 
 impl MainLoop {
     pub fn new() -> Self {
-        let (environment, display, mut queue) = new_default_environment!(MyApp, desktop).unwrap();
+        let (environment, display, queue) = new_default_environment!(MyApp, desktop).unwrap();
 
         #[cfg(debug_assertions)]
         debug_printout(&environment);
-
-        let pool = environment
-            .create_auto_pool()
-            .expect("Could not create memory pool!");
 
         MainLoop {
             wl_display: display,
             main_event_queue: queue,
             windows: HashMap::new(),
-            pool,
             environment,
             callback: None,
         }
@@ -185,9 +174,6 @@ impl MainLoop {
 
     pub fn get_environment(&self) -> &Environment<MyApp> {
         &self.environment
-    }
-    pub fn get_queue(&self) -> &EventQueue {
-        &self.main_event_queue
     }
 }
 
@@ -218,7 +204,9 @@ impl InnerLoop for MainLoop {
                 err.code, err.message, err.object_id, err.object_interface
             );
         }
-        self.wl_display.flush();
+        self.wl_display
+            .flush()
+            .expect("Could not transfer data to the Wayland compositor\ndislplay.flush() failed!");
 
         //let mut to_delete;
         //Next action handling

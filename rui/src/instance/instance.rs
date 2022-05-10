@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::future::Future;
 use std::sync::{Arc, RwLock};
-use std::time::SystemTime;
 
 use raw_window_handle::HasRawWindowHandle;
 
@@ -127,11 +126,12 @@ where
                     MainLoopRequest::CreateSurface { attr, sender } => {
                         main_worker.spawn(async {
                             let surface = rui_io::surface::Surface::new(target, &attr).await;
-                            let surface_shared_state = Arc::new(RwLock::new(SurfaceSharedState::new(
-                                surface.id(),
-                                attr,
-                                surface.raw_window_handle(),
-                            )));
+                            let surface_shared_state =
+                                Arc::new(RwLock::new(SurfaceSharedState::new(
+                                    surface.id(),
+                                    attr,
+                                    surface.raw_window_handle(),
+                                )));
                             surfaces.insert(surface.id(), (surface, surface_shared_state.clone()));
                             sender.send(surface_shared_state);
                         });

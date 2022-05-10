@@ -7,6 +7,7 @@ where
 {
     type Error: Error;
 
+    #[allow(unused_variables)]
     fn handle(&mut self, event: T) -> Result<(), Self::Error> {
         Ok(())
     }

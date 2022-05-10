@@ -4,24 +4,14 @@ use crate::surface::{SurfaceAttributes, SurfaceId};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, WaylandHandle};
 use rui_util::alloc::oneshot;
 use rui_util::Extent;
-use smithay_client_toolkit::shm::{AutoMemPool, Format};
-use smithay_client_toolkit::shm::{DoubleMemPool, MemPool};
-use smithay_client_toolkit::window::{Event, FallbackFrame, Window};
+use smithay_client_toolkit::window::{Event, FallbackFrame};
 use std::cell::RefCell;
-use std::io::{BufWriter, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::Display;
 
-enum NextAction {
-    Refresh,
-    Redraw,
-    Exit,
-}
-
 pub struct Surface<'main, 'child> {
-    loop_target: LoopTarget<'main, 'child>,
+    _loop_target: LoopTarget<'main, 'child>,
     wl_display: Display,
     wl_surface: WlSurface,
     surface_id: SurfaceId,
@@ -66,7 +56,6 @@ impl<'main, 'child> Surface<'main, 'child> {
             })));
 
             let sender_arc = Arc::new(RefCell::new(Some(sender)));
-            let surface_cloned = surface.clone();
             let window_state_shared_cloned = window_state_shared.clone();
 
             let window = environment
@@ -80,6 +69,7 @@ impl<'main, 'child> Surface<'main, 'child> {
                         let mut window_state_shared_mut = window_state_shared.as_ref().borrow_mut();
 
                         match event {
+                            #[allow(unused_variables)] // todo: react to states;
                             Event::Configure { new_size, states } => {
                                 if let Some(new_size) = new_size {
                                     window_state_shared_mut.set_size(Extent {
@@ -99,11 +89,9 @@ impl<'main, 'child> Surface<'main, 'child> {
                                 }
                             }
                             Event::Close => {
-                                //state.close_requested = true;
+                                window_state_shared_mut.signal_should_close();
                             }
                             Event::Refresh => {
-                                //state.refresh_requested = true;
-                                //state.window.refresh();
                                 window_state_shared_mut.signal_should_refresh();
                             }
                         }
@@ -122,7 +110,7 @@ impl<'main, 'child> Surface<'main, 'child> {
             ); // :/
 
             let win = Surface {
-                loop_target: loop_target.clone(),
+                _loop_target: loop_target.clone(),
                 wl_display: inner_ml.wl_display.clone(),
                 wl_surface: surface,
                 surface_id,
@@ -132,31 +120,6 @@ impl<'main, 'child> Surface<'main, 'child> {
         };
         receiver.recv().await;
         win
-    }
-
-    pub fn redraw(pool: &mut AutoMemPool, surface: &WlSurface, size_x: u32, size_y: u32) {
-        return;
-        let mut buffer = pool
-            .buffer(
-                size_x as i32,
-                size_y as i32,
-                (size_x * 4) as i32,
-                Format::Argb8888,
-            )
-            .expect("Could not create buffer");
-
-        {
-            let pxcount = size_x * size_y;
-            let mut writer = BufWriter::new(&mut buffer.0);
-            let pixel: u32 = 0xFF_7C_7C_7C;
-            for _ in 0..pxcount {
-                writer.write_all(&pixel.to_ne_bytes()).unwrap();
-            }
-            writer.flush().unwrap();
-        }
-        surface.attach(Some(&buffer.1), 0, 0);
-        surface.damage_buffer(0, 0, size_x as i32, size_y as i32);
-        surface.commit();
     }
 
     fn surface_id(surface: &WlSurface) -> SurfaceId {

@@ -9,14 +9,14 @@ use crate::event::{Event, Flow, InnerLoop};
 use crate::platform;
 
 pub struct MainLoop {
-    state: LoopStateRef,
+    _state: LoopStateRef,
     pub(super) child_loop_controls: RwLock<Vec<LoopControl>>,
     pub(crate) inner: RefCell<platform::event::MainLoop>,
 }
 impl MainLoop {
     pub fn new() -> Self {
         MainLoop {
-            state: LoopStateRef::new(),
+            _state: LoopStateRef::new(),
             child_loop_controls: RwLock::new(vec![]),
             inner: RefCell::new(platform::event::MainLoop::new()),
         }

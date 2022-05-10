@@ -2,6 +2,7 @@ use raw_window_handle::RawWindowHandle;
 
 use rui_io::surface::{SurfaceAttributes, SurfaceId};
 
+#[allow(dead_code)]
 pub struct State {
     pub(crate) id: SurfaceId,
     pub(crate) attr: SurfaceAttributes,

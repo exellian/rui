@@ -1,7 +1,6 @@
 use crate::instance::{Instance, InstanceShared};
 use crate::Backend;
 use rui_util::lazy::Lazy;
-use std::any::Any;
 use std::future::Future;
 
 static INSTANCE: Lazy<Reactor> = Lazy::new();

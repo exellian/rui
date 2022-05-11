@@ -5,22 +5,22 @@ use cocoa::appkit::{CGFloat, NSApp, NSBackingStoreBuffered, NSView, NSWindow, NS
 use cocoa::base::{id, nil};
 use cocoa::foundation::{NSPoint, NSRect, NSSize};
 use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
+use lazy_static::lazy_static;
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO, YES};
 use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
 
-use class::Class as WindowClass;
-use delegate_class::DelegateClass as WindowDelegateClass;
 use delegate_state::DelegateState as WindowDelegateState;
 use rui_util::Extent;
-use view_class::ViewClass as WindowViewClass;
 
-use crate::event::{InnerLoop, LoopTarget};
-use crate::platform::event::Queue;
+use crate::event::LoopTarget;
 use crate::platform::platform::surface::delegate_state::DelegateState;
 use crate::platform::platform::surface::view_state::ViewState;
 use crate::platform::platform::{ffi, util};
 use crate::surface::{SurfaceAttributes, SurfaceId};
+use class::Class as WindowClass;
+use delegate_class::DelegateClass as WindowDelegateClass;
+use view_class::ViewClass as WindowViewClass;
 
 mod class;
 mod delegate_class;
@@ -39,7 +39,10 @@ pub struct Surface<'main, 'child> {
     _non_send: PhantomData<*const ()>,
 }
 impl<'main, 'child> Surface<'main, 'child> {
-    pub fn new(loop_target: &LoopTarget<'main, 'child>, attr: &SurfaceAttributes) -> Self {
+    pub async fn new(
+        loop_target: &LoopTarget<'main, 'child>,
+        attr: &SurfaceAttributes,
+    ) -> Surface<'main, 'child> {
         let is_main_thread: BOOL = unsafe { msg_send![class!(NSThread), isMainThread] };
         if is_main_thread == NO {
             panic!("Surface on macos can only be created with the main loop target!");

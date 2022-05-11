@@ -3,6 +3,7 @@ use crate::platform::event::app::{AppClass, AppDelegateClass, AppDelegateState};
 use crate::surface::SurfaceId;
 use cocoa::appkit::NSApp;
 use cocoa::base::id;
+use lazy_static::lazy_static;
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO};
 use std::cell::RefCell;

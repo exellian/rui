@@ -27,5 +27,3 @@ impl crate::event::queue::Dequeue<Event> for Queue {
         self.inner.as_ref().borrow_mut().pop_front()
     }
 }
-
-impl crate::event::Queue<Event> for Queue {}

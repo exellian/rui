@@ -1,5 +1,9 @@
+#![feature(const_format_args)]
 extern crate alloc;
 extern crate core;
+#[macro_use]
+extern crate rust_embed;
+extern crate wgpu_glyph;
 
 pub use rui_macros::main;
 
@@ -9,6 +13,7 @@ use crate::node::Node;
 
 pub mod component;
 pub mod error;
+pub mod font;
 pub mod instance;
 pub mod math;
 pub mod node;

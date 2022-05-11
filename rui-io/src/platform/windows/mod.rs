@@ -1,6 +1,5 @@
+pub mod event;
 mod surface;
-mod input;
-mod event;
-pub mod io;
+mod util;
 
 pub use surface::Surface;

@@ -9,8 +9,6 @@
 //!  - Windows
 //!  - Linux with a Wayland compositor
 
-#![feature(thread_spawn_unchecked)]
-
 #[macro_use]
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 extern crate objc;

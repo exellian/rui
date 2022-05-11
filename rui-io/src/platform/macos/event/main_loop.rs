@@ -5,7 +5,8 @@ use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use objc::rc::autoreleasepool;
 use objc::runtime::{NO, YES};
 
-use crate::event::{Event, Flow, InnerLoop};
+use crate::event::inner::{InnerFlow, InnerLoop};
+use crate::event::Event;
 use crate::platform::event::main_loop_state::MainLoopState;
 use crate::platform::event::Queue;
 use crate::surface::SurfaceEvent;
@@ -39,7 +40,7 @@ impl InnerLoop for MainLoop {
         });
     }
 
-    fn process(&mut self, flow: &Flow) {
+    fn process(&mut self, flow: &InnerFlow) {
         let state = self.state_mut();
         // This block will try to receive the next event from the event queue.
         // The event (NSEvent) gets then propagated through the application by calling sendEvent: event
@@ -56,7 +57,7 @@ impl InnerLoop for MainLoop {
                     YES,
                 );
             state.ns_app.sendEvent_(event);
-            if let Flow::Wait = flow {
+            if let InnerFlow::Wait = flow {
                 let _: id = state
                     .ns_app
                     .nextEventMatchingMask_untilDate_inMode_dequeue_(

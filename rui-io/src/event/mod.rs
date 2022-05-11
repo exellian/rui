@@ -1,7 +1,7 @@
+mod child_loop;
 mod exit_code;
 mod flow;
-mod inner_loop;
-mod r#loop;
+pub(crate) mod inner;
 mod loop_control;
 mod loop_state;
 mod loop_target;
@@ -10,11 +10,10 @@ pub(crate) mod queue;
 
 use crate::surface::{SurfaceEvent, SurfaceId};
 
+pub use child_loop::ChildLoop as ChildEventLoop;
 pub use flow::Flow;
-pub(crate) use inner_loop::InnerLoop;
 pub use loop_target::LoopTarget as EventLoopTarget;
 pub use main_loop::MainLoop as MainEventLoop;
-pub use r#loop::Loop as EventLoop;
 
 pub use loop_target::LoopTarget;
 

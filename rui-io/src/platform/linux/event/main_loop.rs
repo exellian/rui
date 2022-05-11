@@ -1,4 +1,5 @@
-use crate::event::{Event, Flow, InnerLoop};
+use crate::event::inner::{InnerFlow, InnerLoop};
+use crate::event::Event;
 use crate::surface::SurfaceId;
 use rui_util::Extent;
 use smithay_client_toolkit::environment::Environment;
@@ -192,7 +193,7 @@ impl InnerLoop for MainLoop {
         (self.callback.as_ref().unwrap().as_ref().borrow_mut())(&Event::Init);
     }
 
-    fn process(&mut self, flow: &Flow) {
+    fn process(&mut self, flow: &InnerFlow) {
         /*eprintln!(
             "Inside Main Loop. Wayland connection is alive: {}",
             self.wl_display.is_alive()
@@ -259,7 +260,7 @@ impl InnerLoop for MainLoop {
         //self.windows.remove(to_delete);
 
         match flow {
-            Flow::Wait => {
+            InnerFlow::Wait => {
                 //eprintln!("Inside wait");
                 match self.main_event_queue.dispatch(&mut (), |raw_event, _, _| {
                     eprintln!("Got unhandled raw event: {:#?}", raw_event);
@@ -276,7 +277,7 @@ impl InnerLoop for MainLoop {
                     }
                 }
             }
-            Flow::Poll => {
+            InnerFlow::Poll => {
                 /*
                 eprintln!("Inside poll");
                 if let Err(e) = self.wl_display.flush() {
@@ -304,7 +305,6 @@ impl InnerLoop for MainLoop {
                         .expect("Failed to dispatch all messages.");
                 }
             }
-            Flow::Exit(_) => unreachable!(),
         }
     }
 }

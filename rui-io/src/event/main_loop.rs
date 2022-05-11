@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::process::exit;
 use std::sync::RwLock;
 
+use crate::event::inner::InnerLoop;
 use crate::event::loop_control::LoopControl;
 use crate::event::loop_state::LoopStateRef;
 use crate::event::loop_target::LoopTarget;
-use crate::event::{Event, Flow, InnerLoop};
+use crate::event::{Event, Flow};
 use crate::platform;
 
 pub struct MainLoop {
@@ -39,7 +40,7 @@ impl MainLoop {
             }
             {
                 let mut mut_guard = self.inner.borrow_mut();
-                mut_guard.process(&flow);
+                mut_guard.process(&flow.clone().try_into().unwrap());
             }
             if !emitted {
                 callback(&target, None, &mut flow);

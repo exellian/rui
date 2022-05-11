@@ -1,4 +1,7 @@
-  Liberation Fonts
+# NOTE
+These fonts are downloaded from [this place.](https://github.com/liberationfonts/liberation-fonts)
+
+Liberation Fonts
   =================
 
   The Liberation Fonts is font collection which aims to provide document 

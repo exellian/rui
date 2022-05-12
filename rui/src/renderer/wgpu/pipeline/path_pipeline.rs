@@ -1,7 +1,11 @@
+use crate::math;
+use crate::math::{max, min, rect};
 use crate::renderer::wgpu::primitive;
+use crate::renderer::wgpu::primitive::PathSegment;
+use crate::util::Rect;
 use alloc::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu_types::BufferUsages;
+use wgpu_types::{BufferUsages, TextureFormat};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -38,6 +42,7 @@ impl Instance {
 }
 
 pub struct PathPipeline {
+    deferred_pipeline: wgpu::RenderPipeline,
     pipeline: wgpu::RenderPipeline,
     globals_buffer: wgpu::Buffer,
     globals_bind_group: wgpu::BindGroup,
@@ -133,7 +138,44 @@ impl PathPipeline {
             multiview: None,
         });
 
+        let deferred_shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../../../../shader/path_deferred.wgsl"
+            ))),
+        });
+
+        let deferred_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[&globals_bind_group_layout, &segments_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let deferred_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: None,
+            layout: Some(&deferred_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &deferred_shader,
+                entry_point: "vs_main",
+                buffers: &[Instance::desc()],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &deferred_shader,
+                entry_point: "fs_main",
+                targets: &[TextureFormat::Rgba32Float.into()],
+            }),
+            primitive: wgpu::PrimitiveState {
+                cull_mode: Some(wgpu::Face::Back),
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+        });
+
         PathPipeline {
+            deferred_pipeline,
             pipeline,
             globals_buffer,
             globals_bind_group,
@@ -150,6 +192,10 @@ impl PathPipeline {
             aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));
+    }
+
+    pub fn record_deferred<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        render_pass.set_pipeline(&self.deferred_pipeline)
     }
 
     pub fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -173,12 +219,26 @@ impl PathPipeline {
         let mut index = 0;
         for p in paths {
             let start = index;
+            let mut rect = [1.0, 1.0, 0.0, 0.0].into();
             for s in &p.segments {
+                let res = match s.typ {
+                    PathSegment::CUBIC_BEZIER => math::solve_minmax_cubic_bezier(
+                        s.param0.into(),
+                        s.param1.into(),
+                        s.param2.into(),
+                        s.param3.into(),
+                    ),
+                    PathSegment::LINEAR => rect::rect(s.param0.into(), s.param1.into()),
+                    _ => unreachable!(),
+                };
+                rect = math::rect::max(rect, res);
+                println!("{:?}", rect);
                 all_paths.segments[index as usize] = *s;
                 index += 1;
             }
+            rect = math::rect::min(rect, p.rect.into());
             instances.push(Instance {
-                rect: p.rect,
+                rect: rect.into(),
                 color: p.color,
                 segment_range: [start, index],
             })

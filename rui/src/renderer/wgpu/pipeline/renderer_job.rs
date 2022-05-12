@@ -177,6 +177,10 @@ where
         self.path_pipeline.mount(device, &paths);
     }
 
+    pub(crate) fn record_deferred<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
+        self.path_pipeline.record_deferred(render_pass);
+    }
+
     pub(crate) fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         self.rect_pipeline.record(render_pass);
         self.image_pipeline.record(render_pass);

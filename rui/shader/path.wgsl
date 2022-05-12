@@ -12,7 +12,7 @@ struct Globals {
 
 struct PathSegment {
     typ: u32;
-    flags: u32;
+    woff_param: u32;
     param0: vec2<f32>;
     param1: vec2<f32>;
     param2: vec2<f32>;
@@ -515,24 +515,24 @@ fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
         return in.color;
     }
 
-    return vec4<f32>(0.0);
+    return vec4<f32>(0.2);
 }
 
 [[stage(vertex)]]
 fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
     var out: VertexOutput;
     if (model.vid == 0u || model.vid == 3u) {
-        out.position = cc(vec4<f32>(instance.rect.xy, 0.0, 1.0));
-        out.norm_position = vec2<f32>(0.0, 0.0);
+        out.position = cc(vec4<f32>(instance.rect.x, instance.rect.y * globals.aspect_ratio, 0.0, 1.0));
+        out.norm_position = vec2<f32>(instance.rect.xy);
     } else if (model.vid == 2u || model.vid == 4u) {
-        out.position = cc(vec4<f32>(instance.rect.x + instance.rect.z, instance.rect.y + instance.rect.w, 0.0, 1.0));
-        out.norm_position = vec2<f32>(1.0, 1.0 / globals.aspect_ratio);
+        out.position = cc(vec4<f32>(instance.rect.z, instance.rect.w * globals.aspect_ratio, 0.0, 1.0));
+        out.norm_position = vec2<f32>(instance.rect.z, instance.rect.w);
     } else if (model.vid == 1u) {
-        out.position = cc(vec4<f32>(instance.rect.x, instance.rect.y + instance.rect.w, 0.0, 1.0));
-        out.norm_position = vec2<f32>(0.0, 1.0 / globals.aspect_ratio);
+        out.position = cc(vec4<f32>(instance.rect.x, instance.rect.w * globals.aspect_ratio, 0.0, 1.0));
+        out.norm_position = vec2<f32>(instance.rect.x, instance.rect.w);
     } else {
-        out.position = cc(vec4<f32>(instance.rect.x + instance.rect.z, instance.rect.y, 0.0, 1.0));
-        out.norm_position = vec2<f32>(1.0, 0.0);
+        out.position = cc(vec4<f32>(instance.rect.z, instance.rect.y * globals.aspect_ratio, 0.0, 1.0));
+        out.norm_position = vec2<f32>(instance.rect.z, instance.rect.y);
     }
     out.color = instance.color;
     out.segment_range = instance.segment_range;

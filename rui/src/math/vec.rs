@@ -1,5 +1,5 @@
 use crate::math::num::{AddInv, Field, Max, Min, MulInv, Num, Ring};
-use std::cmp::{max, min};
+use crate::math::{max, min};
 use std::ops::{
     Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref,
     DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl,
@@ -11,12 +11,12 @@ pub type Vec2<T> = Vector<T, 2>;
 pub type Vec3<T> = Vector<T, 3>;
 pub type Vec4<T> = Vector<T, 4>;
 
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub struct Vector<T, const SIZE: usize>([T; SIZE]);
 
 impl<T, const SIZE: usize> Min for Vector<T, SIZE>
 where
-    T: Ord,
+    T: Min<Output = T>,
 {
     type Output = Self;
 
@@ -34,7 +34,7 @@ where
 }
 impl<T, const SIZE: usize> Max for Vector<T, SIZE>
 where
-    T: Ord,
+    T: Max<Output = T>,
 {
     type Output = Self;
 
@@ -127,6 +127,11 @@ where
 impl<T, const SIZE: usize> From<[T; SIZE]> for Vector<T, SIZE> {
     fn from(arr: [T; SIZE]) -> Self {
         Vector(arr)
+    }
+}
+impl<T, const SIZE: usize> Into<[T; SIZE]> for Vector<T, SIZE> {
+    fn into(self) -> [T; SIZE] {
+        self.0
     }
 }
 impl<T, const SIZE: usize> Deref for Vector<T, SIZE> {

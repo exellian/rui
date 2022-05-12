@@ -1,5 +1,33 @@
+struct Globals {
+    aspect_ratio: f32;
+};
+
+struct PathSegment {
+    typ: u32;
+    woff_param: u32;
+    param0: vec2<f32>;
+    param1: vec2<f32>;
+    param2: vec2<f32>;
+    param3: vec2<f32>;
+};
+
 struct Paths {
     segments: array<PathSegment, 256>;
+};
+
+struct VertexInput {
+    [[builtin(vertex_index)]] vid: u32;
+};
+
+struct VertexOutput {
+    [[builtin(position)]] position: vec4<f32>;
+    [[location(0), interpolate(flat)]] segment_range: vec2<u32>;
+};
+
+struct Instance {
+    [[location(0)]] rect: vec4<f32>;
+    [[location(1)]] color: vec4<f32>;
+    [[location(2)]] segment_range: vec2<u32>;
 };
 
 [[group(1), binding(0)]] var<uniform> all_paths: Paths;
@@ -210,4 +238,60 @@ fn solve_cubic_bezier(
         }
     }
     return t;
+}
+[[stage(fragment)]]
+fn fs_main(vertex_in: VertexOutput) -> [[location(0)]] vec4<f32> {
+
+    //if (true) {
+    //    return vec4<f32>(1.0);
+    //}
+
+    var y_closest_top: EdgeValue = ev_none;
+    var y_closest_bot: EdgeValue = ev_none;
+
+    // Go through all path segments and find the closest edge values
+    for (var i: u32 = in.segment_range.x; i < in.segment_range.y; i = i + 1u) {
+        var segment: PathSegment = all_paths.segments[i];
+        if (segment.typ == SEGMENT_TYPE_LINEAR) {
+            var x: EdgeValue = ev_none;
+            var y: EdgeValue = ev_none;
+            edge_values_linear(in.norm_position, &segment, &x, &y);
+            ev_check_closer_top(&y_closest_top, &x, in.norm_position);
+            ev_check_closer_top(&y_closest_top, &y, in.norm_position);
+            ev_check_closer_bot(&y_closest_bot, &x, in.norm_position);
+            ev_check_closer_bot(&y_closest_bot, &y, in.norm_position);
+        } else if (segment.typ == SEGMENT_TYPE_ARC) {
+
+        } else if (segment.typ == SEGMENT_TYPE_QUADRATIC_BEZIER) {
+
+        } else if (segment.typ == SEGMENT_TYPE_CUBIC_BEZIER) {
+            var x: EdgeValue = ev_none;
+            var y: EdgeValue = ev_none;
+            var z: EdgeValue = ev_none;
+            edge_values_cubic_bezier(in.norm_position, &segment, &x, &y, &z);
+            ev_check_closer_top(&y_closest_top, &x, in.norm_position);
+            ev_check_closer_top(&y_closest_top, &y, in.norm_position);
+            ev_check_closer_top(&y_closest_top, &z, in.norm_position);
+            ev_check_closer_bot(&y_closest_bot, &x, in.norm_position);
+            ev_check_closer_bot(&y_closest_bot, &y, in.norm_position);
+            ev_check_closer_bot(&y_closest_bot, &z, in.norm_position);
+        }
+    }
+    return vec4<f32>(0.2);
+}
+
+[[stage(vertex)]]
+fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
+    var vertex_out: VertexOutput;
+    if (model.vid == 0u || model.vid == 3u) {
+        vertex_out.position = cc(vec4<f32>(0.0, 0.0, 0.0, 1.0));
+    } else if (model.vid == 2u || model.vid == 4u) {
+        vertex_out.position = cc(vec4<f32>(1.0, 1.0, 0.0, 1.0));
+    } else if (model.vid == 1u) {
+        vertex_out.position = cc(vec4<f32>(0.0, 1.0, 0.0, 1.0));
+    } else {
+        vertex_out.position = cc(vec4<f32>(1.0, 0.0, 0.0, 1.0));
+    }
+    vertex_out.segment_range = instance.segment_range;
+    return vertex_out;
 }

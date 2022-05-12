@@ -1,13 +1,17 @@
 use crate::node::base::BaseNode;
+use crate::node::text::TextNode;
 use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
 use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
+use crate::renderer::wgpu::pipeline::text_pipeline::TextPipeline;
 use crate::renderer::wgpu::primitive;
 use crate::util::{Flags, PathSegment, Rect};
 use crate::{Backend, Node};
 use async_recursion::async_recursion;
 use rui_util::Extent;
 use std::marker::PhantomData;
+use wgpu::util::StagingBelt;
+use wgpu::{CommandEncoder, Device, RenderPass, TextureView};
 
 pub struct RenderJob<B>
 where
@@ -18,6 +22,7 @@ where
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
     pub(crate) path_pipeline: PathPipeline,
+    pub(crate) text_pipeline: TextPipeline,
     _b: PhantomData<B>,
 }
 impl<B> RenderJob<B>
@@ -32,12 +37,14 @@ where
         let rect_pipeline = RectPipeline::new(device, &config);
         let image_pipeline = ImagePipeline::new(device, &config);
         let path_pipeline = PathPipeline::new(device, &config);
+        let text_pipeline = TextPipeline::new(device, &config);
         RenderJob {
             config,
             surface,
             rect_pipeline,
             image_pipeline,
             path_pipeline,
+            text_pipeline,
             _b: PhantomData,
         }
     }
@@ -80,6 +87,7 @@ where
         rects: &mut Vec<primitive::Rect>,
         images: &mut Vec<primitive::Image>,
         paths: &mut Vec<primitive::Path>,
+        texts: &mut Vec<Node>,
     ) {
         match node {
             Node::Rectangle(base) => rects.push(primitive::Rect {
@@ -89,7 +97,7 @@ where
             }),
             #[allow(unused_variables)]
             Node::Border(base, b) => {
-                Self::flatten(root, parent, b.node_mut(), rects, images, paths).await;
+                Self::flatten(root, parent, b.node_mut(), rects, images, paths, texts).await;
             }
             Node::Path(base, p) => {
                 let mut segments = Vec::with_capacity(p.segments().len());
@@ -139,7 +147,7 @@ where
             }
             Node::Composition(_, c) => {
                 for node in c.layers_mut() {
-                    Self::flatten(root, parent, node, rects, images, paths).await;
+                    Self::flatten(root, parent, node, rects, images, paths, texts).await;
                 }
             }
             Node::Image(base, i) => images.push(primitive::Image {
@@ -151,12 +159,20 @@ where
                 resource: i.resource().clone(),
             }),
             #[allow(unused_variables)]
-            Node::Text(_, t) => {
-                todo!()
+            Node::Text(base, t) => {
+                texts.push(Node::Text(base.clone(), t.clone()));
+                /*
+                let section = Section::new()
+                    .with_bounds(base.bounding_rect.extent.into())
+                    .with_screen_position(base.bounding_rect.offset.into())
+                    .with_text(t.text());
+                texts.push(primitive::Text::from(t));
+
+                 */
             }
             Node::Component(_, c) => {
                 let mut node = c.node().await;
-                Self::flatten(root, parent, &mut node, rects, images, paths).await;
+                Self::flatten(root, parent, &mut node, rects, images, paths, texts).await;
             }
         }
     }
@@ -170,11 +186,22 @@ where
         let mut rects = vec![];
         let mut images = vec![];
         let mut paths = vec![];
+        let mut texts = vec![];
         let root = Rect::new(0, 0, self.config.width, self.config.height);
-        Self::flatten(&root, &root, node, &mut rects, &mut images, &mut paths).await;
+        Self::flatten(
+            &root,
+            &root,
+            node,
+            &mut rects,
+            &mut images,
+            &mut paths,
+            &mut texts,
+        )
+        .await;
         self.rect_pipeline.mount(device, &rects);
         self.image_pipeline.mount(device, queue, &images).await;
         self.path_pipeline.mount(device, &paths);
+        self.text_pipeline.mount(device, &texts);
     }
 
     pub(crate) fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -183,12 +210,26 @@ where
         self.path_pipeline.record(render_pass);
     }
 
+    pub(crate) fn draw_enqued_texts(
+        &mut self,
+        device: &Device,
+        staging_belt: &mut StagingBelt,
+        encoder: &mut CommandEncoder,
+        view: &TextureView,
+        width: u32,
+        height: u32,
+    ) {
+        self.text_pipeline
+            .draw_queued(device, staging_belt, encoder, view, width, height)
+    }
+
     pub(crate) fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, size: Extent) {
         self.config.width = size.width.max(1);
         self.config.height = size.height.max(1);
         self.rect_pipeline.resize(queue, &self.config);
         self.image_pipeline.resize(queue, &self.config);
         self.path_pipeline.resize(queue, &self.config);
+        self.text_pipeline.resize(&self.config);
         self.surface.configure(device, &self.config);
     }
 }

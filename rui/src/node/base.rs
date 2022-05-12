@@ -1,6 +1,7 @@
 use crate::util::{Color, Flags, Rect};
 use rui_util::{Extent, Offset};
 
+#[derive(Debug, Copy, Clone)]
 pub struct BaseNode {
     pub(crate) flags: Flags,
     pub(crate) bounding_rect: Rect,

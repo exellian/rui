@@ -1,4 +1,3 @@
-use core::fmt::{Display, Formatter};
 use wgpu_glyph::ab_glyph::FontArc;
 
 #[derive(Debug, Copy, Clone)]
@@ -7,23 +6,6 @@ pub enum FontStyle {
     Bold,
     Italic,
     BoldItalic,
-}
-
-impl Display for FontStyle {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self {
-            FontStyle::Regular => write!(f, "Regular"),
-            FontStyle::Bold => {
-                write!(f, "Bold")
-            }
-            FontStyle::Italic => {
-                write!(f, "Italic")
-            }
-            FontStyle::BoldItalic => {
-                write!(f, "BoldItalic")
-            }
-        }
-    }
 }
 
 pub struct FallbackFonts {}
@@ -38,22 +20,6 @@ pub enum FontFamily {
     SansSerif,
     Serif,
     Monospace,
-}
-
-impl Display for FontFamily {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        match self {
-            FontFamily::SansSerif => {
-                write!(f, "Sans")
-            }
-            FontFamily::Serif => {
-                write!(f, "Serif")
-            }
-            FontFamily::Monospace => {
-                write!(f, "Mono")
-            }
-        }
-    }
 }
 
 impl FallbackFonts {
@@ -87,5 +53,30 @@ impl FallbackFonts {
                 .data,
         );
         FontArc::try_from_vec(data).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::font::fallback_fonts::{FallbackFonts, FontFamily, FontStyle};
+
+    #[test]
+    fn test_that_all_fonts_are_loadable() {
+        let _ = FallbackFonts::get_font(FontFamily::SansSerif, FontStyle::Regular);
+        let _ = FallbackFonts::get_font(FontFamily::SansSerif, FontStyle::Italic);
+        let _ = FallbackFonts::get_font(FontFamily::SansSerif, FontStyle::Bold);
+        let _ = FallbackFonts::get_font(FontFamily::SansSerif, FontStyle::BoldItalic);
+
+        let _ = FallbackFonts::get_font(FontFamily::Serif, FontStyle::Regular);
+        let _ = FallbackFonts::get_font(FontFamily::Serif, FontStyle::Italic);
+        let _ = FallbackFonts::get_font(FontFamily::Serif, FontStyle::Bold);
+        let _ = FallbackFonts::get_font(FontFamily::Serif, FontStyle::BoldItalic);
+
+        let _ = FallbackFonts::get_font(FontFamily::Monospace, FontStyle::Regular);
+        let _ = FallbackFonts::get_font(FontFamily::Monospace, FontStyle::Italic);
+        let _ = FallbackFonts::get_font(FontFamily::Monospace, FontStyle::Bold);
+        let _ = FallbackFonts::get_font(FontFamily::Monospace, FontStyle::BoldItalic);
+
+        assert_eq!(1, 1);
     }
 }

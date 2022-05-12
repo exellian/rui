@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use wgpu::util::StagingBelt;
 
 use rui_io::surface::SurfaceId;
 use rui_util::{be, bs, Extent};
@@ -165,7 +166,10 @@ where
             .base
             .as_ref()
             .expect("Can't render with no surface mounted!");
-        let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
+        let mut job = self
+            .jobs
+            .get_mut(&surface.id())
+            .expect("Invalid surface id!");
 
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
@@ -185,6 +189,7 @@ where
         let mut encoder = base
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -200,8 +205,18 @@ where
             });
             job.record(&mut render_pass);
         }
-
+        let mut staging_belt = StagingBelt::new(2048);
+        job.draw_enqued_texts(
+            &base.device,
+            &mut staging_belt,
+            &mut encoder,
+            &view,
+            job.config.width,
+            job.config.height,
+        );
+        staging_belt.finish();
         base.queue.submit(Some(encoder.finish()));
+        staging_belt.recall();
         frame.present();
         be!(render_time);
         Ok(())

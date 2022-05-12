@@ -1,3 +1,4 @@
+#[derive(Debug, Copy, Clone)]
 pub enum Color {
     RGBA { r: f32, g: f32, b: f32, a: f32 },
     RGB { r: f32, g: f32, b: f32 },

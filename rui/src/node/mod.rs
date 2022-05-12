@@ -10,11 +10,13 @@ pub mod text;
 use crate::Component;
 pub use node::Node;
 use std::path::Path;
+use wgpu_glyph::ab_glyph::FontArc;
 
 use crate::node::base::BaseNode;
 use crate::node::composition::CompositionNode;
 use crate::node::image::ImageNode;
 use crate::node::path::PathNode;
+use crate::node::text::TextNode;
 use crate::util::{Color, Point2D, Resource};
 
 pub fn component<T>(component: T) -> Node
@@ -49,4 +51,9 @@ pub fn path(color: impl Into<Color>, from: impl Into<Point2D>) -> path::Builder 
     let mut base = BaseNode::default();
     base.background = color.into();
     PathNode::builder(base, from)
+}
+
+pub fn text(text: impl Into<String>, font_size: f32, font: FontArc) -> Node {
+    let mut base = BaseNode::default();
+    Node::Text(base, TextNode::new(text.into(), font_size, font))
 }

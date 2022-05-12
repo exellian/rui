@@ -1,6 +1,6 @@
 use std::ops::{BitAnd, BitOr, BitXor};
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub struct Flags(u32);
 impl Flags {
     pub const NONE: Self = Flags::new(0x00000000);

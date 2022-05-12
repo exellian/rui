@@ -1,7 +1,7 @@
 use rui_util::{Extent, Offset};
 use std::cmp::{max, min};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Rect {
     pub offset: Offset,
     pub extent: Extent,

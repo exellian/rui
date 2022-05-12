@@ -1,4 +1,4 @@
-use io::alloc::spmc::channel;
+use rui_util::alloc::spmc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;

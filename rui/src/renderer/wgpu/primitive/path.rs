@@ -2,7 +2,7 @@
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PathSegment {
     pub typ: u32,
-    pub flags: u32,
+    pub woff_param: u32,
     pub param0: [f32; 2],
     pub param1: [f32; 2],
     pub param2: [f32; 2],

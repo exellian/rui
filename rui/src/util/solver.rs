@@ -1,13 +1,38 @@
+use crate::math::{Vec2, Vector};
+
+/*
 #[inline]
-#[allow(dead_code)] //todo
-pub fn solve_quadratic(a: f32, b: f32, c: f32) -> (f32, f32) {
-    let _2 = f32::from(2i16);
-    let _4 = f32::from(4i16);
+fn solve_linear(a: f32, b: f32) -> Option<f32> {
+    if a == 0.0 {
+        if b == 0.0 {
+            return Some(0.0);
+        }
+        return None;
+    }
+    return Some(-b / a);
+}
+
+#[inline]
+fn solve_quadratic(a: f32, b: f32, c: f32) -> (Option<f32>, Option<f32>) {
+    if a == 0.0 {
+        let x = solve_linear(b, c);
+        return (x, None);
+    }
+    const _0: f32 = 0.0;
+    const _2: f32 = 2.0;
+    const _4: f32 = 4.0;
 
     let delta0 = _2 * a;
     let delta1 = -b / delta0;
+    let discriminant = b * b - _4 * a * c;
+    if discriminant < _0 {
+        return (None, None);
+    }
+    if discriminant == _0 {
+        return (Some(delta1), None);
+    }
     let d = (b * b - _4 * a * c).sqrt();
-    (delta1 + d / delta0, delta1 - d / delta0)
+    return (Some(delta1 + d / delta0), Some(delta1 - d / delta0));
 }
 
 #[inline]
@@ -106,3 +131,32 @@ pub fn cubic_bezier(
         },
     )
 }
+
+fn cubic(x: f32, a: f32, b: f32, c: f32, d: f32) -> Vec2 {
+    let x_squared: f32 = x * x;
+    return x_squared * x * a + x_squared * b + x * c + d;
+}
+
+fn solve_minmax_cubic_bezier(
+    p0: (f32, f32),
+    p1: (f32, f32),
+    p2: (f32, f32),
+    p3: (f32, f32),
+) -> ((f32, f32), (f32, f32)) {
+    const _3: f32 = 3.0;
+    const _6: f32 = 6.0;
+
+    // Calculate derivative parameters for x coordinate
+    let ax: f32 = -p0.0 + _3 * p1.0 - _3 * p2.0 + p3.0;
+    let bx: f32 = _3 * p0.0 - _6 * p1.0 + _3 * p2.0;
+    let cx: f32 = -_3 * p0.0 + _3 * p1.0;
+
+    // Calculate derivative parameters for y coordinate
+    let ay: f32 = -p0.1 + _3 * p1.1 - _3 * p2.1 + p3.1;
+    let by: f32 = _3 * p0.1 - _6 * p1.1 + _3 * p2.1;
+    let cy: f32 = -_3 * p0.1 + _3 * p1.1;
+
+    let x_min_max = solve_quadratic(ax, bx, cx);
+    let y_min_max = solve_quadratic(ay, by, cy);
+}
+*/

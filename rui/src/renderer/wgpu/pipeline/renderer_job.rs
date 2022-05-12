@@ -101,7 +101,7 @@ where
                             from = to;
                             primitive::PathSegment {
                                 typ: primitive::PathSegment::LINEAR,
-                                flags: 0,
+                                woff_param: 0,
                                 param0: start,
                                 param1: *to,
                                 param2: [0.0, 0.0],
@@ -121,7 +121,7 @@ where
                             from = to;
                             primitive::PathSegment {
                                 typ: primitive::PathSegment::CUBIC_BEZIER,
-                                flags: 0,
+                                woff_param: 0,
                                 param0: start,
                                 param1: params[0],
                                 param2: params[1],

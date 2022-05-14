@@ -1,6 +1,6 @@
 use crate::math;
 use crate::math::num::{Max, Min, Num};
-use crate::math::{Vec2, Vec4};
+use crate::math::{Ring, Vec2, Vec4};
 use crate::util::Point2D;
 
 #[inline]
@@ -39,4 +39,20 @@ where
     let (mut x_min, mut x_max) = (math::min(from[0], to[0]), math::max(from[0], to[0]));
     let (mut y_min, mut y_max) = (math::min(from[1], to[1]), math::max(from[1], to[1]));
     [x_min, y_min, x_max, y_max].into()
+}
+
+#[inline]
+pub fn width<T>(rect: Vec4<T>) -> T
+where
+    T: Ring,
+{
+    rect[2] - rect[0]
+}
+
+#[inline]
+pub fn height<T>(rect: Vec4<T>) -> T
+where
+    T: Ring,
+{
+    rect[3] - rect[1]
 }

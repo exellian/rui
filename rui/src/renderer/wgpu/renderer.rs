@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use wgpu::Maintain;
 
 use rui_io::surface::SurfaceId;
 use rui_util::{be, bs, Extent};
@@ -35,10 +36,15 @@ impl RendererBase {
         let adapter_features = adapter.features();
         // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the surface.
         let mut needed_limits =
-            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
-        needed_limits.max_storage_buffers_per_shader_stage = 4;
-        needed_limits.max_storage_buffer_binding_size = 128 << 20;
-
+            wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
+        /*
+                needed_limits.max_storage_buffers_per_shader_stage = 4;
+                needed_limits.max_storage_buffer_binding_size = 128 << 20;
+                needed_limits.max_storage_textures_per_shader_stage = 4;
+                needed_limits.max_compute_workgroup_size_x = 128;
+                needed_limits.max_compute_workgroup_size_y = 1;
+                needed_limits.max_compute_workgroup_size_z = 1;
+        */
         let (device, queue) = match adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -166,11 +172,9 @@ where
             .as_ref()
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
-
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
-                println!("lol");
                 job.surface.configure(&base.device, &job.config);
                 job.surface
                     .get_current_texture()
@@ -186,24 +190,21 @@ where
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
-            let mut render_pass_deferred = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[],
-                depth_stencil_attachment: None,
-            });
-            job.record_deferred(&mut render_pass_deferred);
+            let mut render_pass_compute =
+                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
+            job.record_compute(&mut render_pass_compute);
+        }
+        {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
-                color_attachments: &[
-                    wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                            store: true,
-                        },
-                    }
-                ],
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: true,
+                    },
+                }],
                 depth_stencil_attachment: None,
             });
             job.record(&mut render_pass);

@@ -1,4 +1,5 @@
 use crate::renderer::wgpu::primitive;
+use crate::util;
 use std::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu_types::BufferUsages;
@@ -13,6 +14,7 @@ pub struct RectPipeline {
 impl RectPipeline {
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
 
@@ -92,6 +94,7 @@ impl RectPipeline {
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));

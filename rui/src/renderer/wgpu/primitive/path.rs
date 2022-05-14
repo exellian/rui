@@ -2,7 +2,9 @@
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct PathSegment {
     pub typ: u32,
-    pub woff_param: u32,
+    pub flags: u32,
+    pub rect_lu: [f32; 2],
+    pub rect_rl: [f32; 2],
     pub param0: [f32; 2],
     pub param1: [f32; 2],
     pub param2: [f32; 2],
@@ -15,11 +17,6 @@ impl PathSegment {
     pub const QUADRATIC_BEZIER: u32 = 2;
     pub const CUBIC_BEZIER: u32 = 3;
     //const CATMULL_ROM: u32 = 4;
-}
-#[repr(C, align(8))]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Paths {
-    pub segments: [PathSegment; 256],
 }
 pub struct Path {
     pub rect: [f32; 4],

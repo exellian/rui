@@ -16,6 +16,7 @@ struct InstanceInput {
 };
 
 struct Globals {
+    width_height: u32;
     aspect_ratio: f32;
 };
 

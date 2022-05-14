@@ -6,14 +6,17 @@ use crate::renderer::wgpu::primitive;
 use crate::util::{Flags, PathSegment, Rect};
 use crate::{Backend, Node};
 use async_recursion::async_recursion;
-use rui_util::Extent;
+use rui_util::{be, bs, Extent};
 use std::marker::PhantomData;
+use wgpu_types::SurfaceConfiguration;
 
 pub struct RenderJob<B>
 where
     B: Backend,
 {
     pub(crate) config: wgpu::SurfaceConfiguration,
+    width: u32,
+    height: u32,
     pub(crate) surface: wgpu::Surface,
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
@@ -32,8 +35,12 @@ where
         let rect_pipeline = RectPipeline::new(device, &config);
         let image_pipeline = ImagePipeline::new(device, &config);
         let path_pipeline = PathPipeline::new(device, &config);
+        let width = config.width;
+        let height = config.height;
         RenderJob {
             config,
+            width,
+            height,
             surface,
             rect_pipeline,
             image_pipeline,
@@ -101,7 +108,9 @@ where
                             from = to;
                             primitive::PathSegment {
                                 typ: primitive::PathSegment::LINEAR,
-                                woff_param: 0,
+                                flags: 0,
+                                rect_lu: [0.0, 0.0],
+                                rect_rl: [0.0, 0.0],
                                 param0: start,
                                 param1: *to,
                                 param2: [0.0, 0.0],
@@ -121,7 +130,9 @@ where
                             from = to;
                             primitive::PathSegment {
                                 typ: primitive::PathSegment::CUBIC_BEZIER,
-                                woff_param: 0,
+                                flags: 0,
+                                rect_lu: [0.0, 0.0],
+                                rect_rl: [0.0, 0.0],
                                 param0: start,
                                 param1: params[0],
                                 param2: params[1],
@@ -174,11 +185,11 @@ where
         Self::flatten(&root, &root, node, &mut rects, &mut images, &mut paths).await;
         self.rect_pipeline.mount(device, &rects);
         self.image_pipeline.mount(device, queue, &images).await;
-        self.path_pipeline.mount(device, &paths);
+        self.path_pipeline.mount(device, paths);
     }
 
-    pub(crate) fn record_deferred<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        self.path_pipeline.record_deferred(render_pass);
+    pub(crate) fn record_compute<'a>(&'a self, compute_pass: &mut wgpu::ComputePass<'a>) {
+        self.path_pipeline.record_compute(compute_pass);
     }
 
     pub(crate) fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
@@ -192,7 +203,21 @@ where
         self.config.height = size.height.max(1);
         self.rect_pipeline.resize(queue, &self.config);
         self.image_pipeline.resize(queue, &self.config);
-        self.path_pipeline.resize(queue, &self.config);
-        self.surface.configure(device, &self.config);
+        self.path_pipeline.resize(device, queue, &self.config);
+        if size.width <= self.width && size.height <= self.height {
+            return;
+        }
+        self.width = self.config.width * 2;
+        self.height = self.config.height * 2;
+        self.surface.configure(
+            device,
+            &SurfaceConfiguration {
+                usage: self.config.usage,
+                format: self.config.format,
+                width: self.width,
+                height: self.height,
+                present_mode: self.config.present_mode,
+            },
+        );
     }
 }

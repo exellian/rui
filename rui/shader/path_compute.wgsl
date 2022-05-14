@@ -1,36 +1,12 @@
-struct Globals {
-    aspect_ratio: f32;
-};
+let PI: f32 = 3.14159265358979323846264338327950288;
+let SEGMENT_TYPE_LINEAR: u32 = 0u;
+let SEGMENT_TYPE_ARC: u32 = 1u;
+let SEGMENT_TYPE_QUADRATIC_BEZIER: u32 = 2u;
+let SEGMENT_TYPE_CUBIC_BEZIER: u32 = 3u;
 
-struct PathSegment {
-    typ: u32;
-    woff_param: u32;
-    param0: vec2<f32>;
-    param1: vec2<f32>;
-    param2: vec2<f32>;
-    param3: vec2<f32>;
-};
-
-struct Paths {
-    segments: array<PathSegment, 256>;
-};
-
-struct VertexInput {
-    [[builtin(vertex_index)]] vid: u32;
-};
-
-struct VertexOutput {
-    [[builtin(position)]] position: vec4<f32>;
-    [[location(0), interpolate(flat)]] segment_range: vec2<u32>;
-};
-
-struct Instance {
-    [[location(0)]] rect: vec4<f32>;
-    [[location(1)]] color: vec4<f32>;
-    [[location(2)]] segment_range: vec2<u32>;
-};
-
-[[group(1), binding(0)]] var<uniform> all_paths: Paths;
+fn unpack(x: u32) -> vec2<u32> {
+    return vec2<u32>(x >> 16u, x & 0xFFFFu);
+}
 
 fn cbrt(x: f32) -> f32 {
     return sign(x) * pow(abs(x), 1./3.);
@@ -185,15 +161,15 @@ fn solve_cubic_bezier(
 
     // If the intersection point is not in between start and end range
     // throw it away
-    if (*_0_sol && (t.x < -0.0001 || t.x > 1.0001)) {
+    if (*_0_sol && (t.x < -0.0 || t.x > 1.0)) {
         *_0_sol = false;
         t.x = 0.0;
     }
-    if (*_1_sol && (t.y < -0.0001 || t.y > 1.0001)) {
+    if (*_1_sol && (t.y < -0.0 || t.y > 1.0)) {
         *_1_sol = false;
         t.y = 0.0;
     }
-    if (*_2_sol && (t.z < -0.0001 || t.z > 1.0001)) {
+    if (*_2_sol && (t.z < -0.0 || t.z > 1.0)) {
         *_2_sol = false;
         t.z = 0.0;
     }
@@ -239,59 +215,93 @@ fn solve_cubic_bezier(
     }
     return t;
 }
-[[stage(fragment)]]
-fn fs_main(vertex_in: VertexOutput) -> [[location(0)]] vec4<f32> {
 
-    //if (true) {
-    //    return vec4<f32>(1.0);
-    //}
-
-    var y_closest_top: EdgeValue = ev_none;
-    var y_closest_bot: EdgeValue = ev_none;
-
-    // Go through all path segments and find the closest edge values
-    for (var i: u32 = in.segment_range.x; i < in.segment_range.y; i = i + 1u) {
-        var segment: PathSegment = all_paths.segments[i];
-        if (segment.typ == SEGMENT_TYPE_LINEAR) {
-            var x: EdgeValue = ev_none;
-            var y: EdgeValue = ev_none;
-            edge_values_linear(in.norm_position, &segment, &x, &y);
-            ev_check_closer_top(&y_closest_top, &x, in.norm_position);
-            ev_check_closer_top(&y_closest_top, &y, in.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &x, in.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &y, in.norm_position);
-        } else if (segment.typ == SEGMENT_TYPE_ARC) {
-
-        } else if (segment.typ == SEGMENT_TYPE_QUADRATIC_BEZIER) {
-
-        } else if (segment.typ == SEGMENT_TYPE_CUBIC_BEZIER) {
-            var x: EdgeValue = ev_none;
-            var y: EdgeValue = ev_none;
-            var z: EdgeValue = ev_none;
-            edge_values_cubic_bezier(in.norm_position, &segment, &x, &y, &z);
-            ev_check_closer_top(&y_closest_top, &x, in.norm_position);
-            ev_check_closer_top(&y_closest_top, &y, in.norm_position);
-            ev_check_closer_top(&y_closest_top, &z, in.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &x, in.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &y, in.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &z, in.norm_position);
-        }
-    }
-    return vec4<f32>(0.2);
+fn rect_width(rect_lu: vec2<f32>, rect_rl: vec2<f32>) -> f32 {
+    return rect_rl.x - rect_lu.x;
 }
 
-[[stage(vertex)]]
-fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
-    var vertex_out: VertexOutput;
-    if (model.vid == 0u || model.vid == 3u) {
-        vertex_out.position = cc(vec4<f32>(0.0, 0.0, 0.0, 1.0));
-    } else if (model.vid == 2u || model.vid == 4u) {
-        vertex_out.position = cc(vec4<f32>(1.0, 1.0, 0.0, 1.0));
-    } else if (model.vid == 1u) {
-        vertex_out.position = cc(vec4<f32>(0.0, 1.0, 0.0, 1.0));
-    } else {
-        vertex_out.position = cc(vec4<f32>(1.0, 0.0, 0.0, 1.0));
+struct Globals {
+    width_height: u32;
+    aspect_ratio: f32;
+};
+
+struct PathSegment {
+    typ: u32;
+    flags: u32;
+    rect_lu: vec2<f32>;
+    rect_rl: vec2<f32>;
+    param0: vec2<f32>;
+    param1: vec2<f32>;
+    param2: vec2<f32>;
+    param3: vec2<f32>;
+};
+
+struct Paths {
+    segments: array<PathSegment>;
+};
+
+[[group(0), binding(0)]] var<uniform> globals: Globals;
+[[group(1), binding(0)]] var<storage,read> all_paths: Paths;
+[[group(2), binding(0)]] var output_texture: texture_storage_2d<rgba32float, write>;
+
+let WORKGROUP_SIZE: u32 = 256u;
+
+// We dispatch (height, 1, 1) workgroups
+// Each workgroup has a local amount of threads of 128 and is responsible for evaluating one path segment
+[[stage(compute), workgroup_size(256u)]]
+fn cs_main([[builtin(num_workgroups)]] num_wg: vec3<u32>, [[builtin(workgroup_id)]] wid: vec3<u32>, [[builtin(local_invocation_id)]] liid: vec3<u32>) {
+
+    // Get the width and height of the
+    let extent: vec2<u32> = unpack(globals.width_height);
+    // Because each workgroup represents a path segment
+    // the workgroup_id.x is the height index and therefore the segment index
+    let segment_index: u32 = wid.x;
+    let segment: PathSegment = all_paths.segments[segment_index];
+    let segment_width: f32 = rect_width(segment.rect_lu, segment.rect_rl);
+    // The segment width is always normalized, but because path can be scaled down we have to calculate the absolute
+    // width by multiplying with the screen width
+    //let absolute_segment_width: u32 = u32(round(segment_width * f32(extent.x)));
+    // Local thread id marks start pixel position
+    // Every round jump amount of workgroup_size to get the next pixel to process
+    for (var index: u32 = liid.x; index < extent.x; index = index + WORKGROUP_SIZE) {
+        // Calculate the current x position
+        let x: f32 = f32(index) / f32(extent.x) + segment.rect_lu.x;
+        // We do not solve anything for linear paths in the prepass
+        if (segment.typ == SEGMENT_TYPE_LINEAR) {
+            return;
+        } else if (segment.typ == SEGMENT_TYPE_ARC) {
+            // TODO
+            return;
+        } else if (segment.typ == SEGMENT_TYPE_QUADRATIC_BEZIER) {
+            // TODO
+            return;
+        } else if (segment.typ == SEGMENT_TYPE_CUBIC_BEZIER) {
+            var _1: bool = false;
+            var _2: bool = false;
+            var _3: bool = false;
+            var solution_count: u32 = 0u;
+            let solution: vec3<f32> = solve_cubic_bezier(
+                x,
+                segment.param0,
+                segment.param1,
+                segment.param2,
+                segment.param3,
+                &_1,
+                &_2,
+                &_3
+            );
+            if (_1) {
+                solution_count = solution_count + 1u;
+            }
+            if (_2) {
+                solution_count = solution_count + 1u;
+            }
+            if (_3) {
+                solution_count = solution_count + 1u;
+            }
+            // Store solution in the output texture
+            textureStore(output_texture, vec2<i32>(i32(index), i32(segment_index)), vec4<f32>(solution, f32(solution_count)));
+        }
     }
-    vertex_out.segment_range = instance.segment_range;
-    return vertex_out;
+
 }

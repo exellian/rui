@@ -3,48 +3,80 @@ use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
 use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
 use crate::renderer::wgpu::primitive;
+use crate::renderer::MSAA;
 use crate::util::{Flags, PathSegment, Rect};
 use crate::{Backend, Node};
 use async_recursion::async_recursion;
 use rui_util::{be, bs, Extent};
 use std::marker::PhantomData;
-use wgpu_types::SurfaceConfiguration;
 
 pub struct RenderJob<B>
 where
     B: Backend,
 {
     pub(crate) config: wgpu::SurfaceConfiguration,
-    width: u32,
-    height: u32,
     pub(crate) surface: wgpu::Surface,
     pub(crate) rect_pipeline: RectPipeline,
     pub(crate) image_pipeline: ImagePipeline,
     pub(crate) path_pipeline: PathPipeline,
+    pub(crate) multisampling_framebuffer: Option<wgpu::TextureView>,
+    pub(crate) msaa: MSAA,
     _b: PhantomData<B>,
 }
 impl<B> RenderJob<B>
 where
     B: Backend,
 {
+    pub fn create_multisampling_framebuffer(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        msaa: &MSAA,
+    ) -> wgpu::TextureView {
+        let multisampling_texture_extent = wgpu::Extent3d {
+            width: config.width,
+            height: config.height,
+            depth_or_array_layers: 1,
+        };
+        let multisampling_texture_descriptor = &wgpu::TextureDescriptor {
+            size: multisampling_texture_extent,
+            mip_level_count: 1,
+            sample_count: msaa.clone().into(),
+            dimension: wgpu::TextureDimension::D2,
+            format: config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: None,
+        };
+
+        device
+            .create_texture(multisampling_texture_descriptor)
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         config: wgpu::SurfaceConfiguration,
         surface: wgpu::Surface,
+        msaa: MSAA,
     ) -> Self {
-        let rect_pipeline = RectPipeline::new(device, &config);
-        let image_pipeline = ImagePipeline::new(device, &config);
-        let path_pipeline = PathPipeline::new(device, &config);
-        let width = config.width;
-        let height = config.height;
+        let rect_pipeline = RectPipeline::new(device, &config, &msaa);
+        let image_pipeline = ImagePipeline::new(device, &config, &msaa);
+        let path_pipeline = PathPipeline::new(device, &config, &msaa);
+
+        let multisampling_framebuffer = match msaa {
+            MSAA::X1 => None,
+            _ => Some(Self::create_multisampling_framebuffer(
+                device, &config, &msaa,
+            )),
+        };
+
         RenderJob {
             config,
-            width,
-            height,
             surface,
             rect_pipeline,
             image_pipeline,
             path_pipeline,
+            multisampling_framebuffer,
+            msaa,
             _b: PhantomData,
         }
     }
@@ -204,20 +236,14 @@ where
         self.rect_pipeline.resize(queue, &self.config);
         self.image_pipeline.resize(queue, &self.config);
         self.path_pipeline.resize(device, queue, &self.config);
-        if size.width <= self.width && size.height <= self.height {
-            return;
+
+        if self.multisampling_framebuffer.is_some() {
+            self.multisampling_framebuffer = Some(Self::create_multisampling_framebuffer(
+                device,
+                &self.config,
+                &self.msaa,
+            ));
         }
-        self.width = self.config.width * 2;
-        self.height = self.config.height * 2;
-        self.surface.configure(
-            device,
-            &SurfaceConfiguration {
-                usage: self.config.usage,
-                format: self.config.format,
-                width: self.width,
-                height: self.height,
-                present_mode: self.config.present_mode,
-            },
-        );
+        self.surface.configure(device, &self.config);
     }
 }

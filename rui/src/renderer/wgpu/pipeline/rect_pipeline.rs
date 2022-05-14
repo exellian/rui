@@ -1,8 +1,9 @@
 use crate::renderer::wgpu::primitive;
+use crate::renderer::MSAA;
 use crate::util;
 use std::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu_types::BufferUsages;
+use wgpu_types::{BufferUsages, MultisampleState};
 
 pub struct RectPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -12,7 +13,7 @@ pub struct RectPipeline {
     instance_buffer: Option<wgpu::Buffer>,
 }
 impl RectPipeline {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let globals = primitive::Globals {
             width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
@@ -61,6 +62,12 @@ impl RectPipeline {
             push_constant_ranges: &[],
         });
 
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -79,7 +86,7 @@ impl RectPipeline {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample,
             multiview: None,
         });
 

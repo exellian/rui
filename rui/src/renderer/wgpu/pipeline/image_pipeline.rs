@@ -1,4 +1,5 @@
 use crate::renderer::wgpu::primitive;
+use crate::renderer::MSAA;
 use crate::util;
 use crate::util::Resource;
 use std::borrow::Cow;
@@ -27,7 +28,7 @@ pub struct ImagePipeline {
     instance_bind_group_layout: BindGroupLayout,
 }
 impl ImagePipeline {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -131,6 +132,12 @@ impl ImagePipeline {
             push_constant_ranges: &[],
         });
 
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -149,7 +156,7 @@ impl ImagePipeline {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample,
             multiview: None,
         });
 

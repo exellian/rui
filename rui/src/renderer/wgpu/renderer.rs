@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use wgpu::Maintain;
+use wgpu_types::Backends;
 
 use rui_io::surface::SurfaceId;
 use rui_util::{be, bs, Extent};
@@ -7,6 +8,7 @@ use rui_util::{be, bs, Extent};
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
 use crate::renderer::wgpu::RendererError;
+use crate::renderer::MSAA;
 use crate::Backend;
 
 pub struct RendererBase {
@@ -114,9 +116,10 @@ where
                 let surface_handle = match &mut self.base {
                     Some(base) => unsafe { base.instance.create_surface(surface) },
                     rb @ None => {
-                        let backend_bits =
-                            wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
-                        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+                        //let backend_bits =
+                        //    wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
+                        let backend_bits = Backends::VULKAN;
+                        let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
 
                         // Creating a surface first before creating the base, so that
                         // the base can use it to find a suitable adapter (GPU)
@@ -140,8 +143,10 @@ where
                     present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
                 };
                 surface_handle.configure(&base.device, &config);
-                self.jobs
-                    .insert(sid, RenderJob::new(&base.device, config, surface_handle));
+                self.jobs.insert(
+                    sid,
+                    RenderJob::new(&base.device, config, surface_handle, MSAA::X4),
+                );
                 (self.jobs.get_mut(&sid).unwrap(), base)
             }
             Some(sh) => (sh, self.base.as_ref().unwrap()),
@@ -158,9 +163,9 @@ where
         size: Extent,
     ) -> Result<(), Self::Error> {
         bs!(resize);
-        let c = self.jobs.get_mut(&surface.id()).unwrap();
+        let job = self.jobs.get_mut(&surface.id()).unwrap();
         let base = self.base.as_mut().unwrap();
-        c.resize(&base.device, &base.queue, size);
+        job.resize(&base.device, &base.queue, size);
         be!(resize);
         Ok(())
     }
@@ -175,6 +180,7 @@ where
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
+                println!("lol");
                 job.surface.configure(&base.device, &job.config);
                 job.surface
                     .get_current_texture()
@@ -195,16 +201,28 @@ where
             job.record_compute(&mut render_pass_compute);
         }
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[wgpu::RenderPassColorAttachment {
+            let render_pass_color_attachment = match job.msaa {
+                MSAA::X1 => wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                         store: true,
                     },
-                }],
+                },
+                _ => wgpu::RenderPassColorAttachment {
+                    view: job.multisampling_framebuffer.as_ref().unwrap(),
+                    resolve_target: Some(&view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: true,
+                    },
+                },
+            };
+
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[render_pass_color_attachment],
                 depth_stencil_attachment: None,
             });
             job.record(&mut render_pass);

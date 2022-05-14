@@ -1,6 +1,7 @@
 use crate::math::{max, min, rect};
 use crate::renderer::wgpu::primitive;
 use crate::renderer::wgpu::primitive::PathSegment;
+use crate::renderer::MSAA;
 use crate::util::Rect;
 use crate::{math, util};
 use alloc::borrow::Cow;
@@ -9,8 +10,8 @@ use std::mem;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Device, Texture};
 use wgpu_types::{
-    BufferUsages, Extent3d, StorageTextureAccess, TextureFormat, TextureSampleType, TextureUsages,
-    TextureViewDimension,
+    BufferUsages, Extent3d, MultisampleState, StorageTextureAccess, TextureFormat,
+    TextureSampleType, TextureUsages, TextureViewDimension,
 };
 
 #[repr(C)]
@@ -69,7 +70,7 @@ pub struct PathPipeline {
 impl PathPipeline {
     const MAX_PATH_SEGMENTS: u32 = 4096;
 
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let globals = primitive::Globals {
             width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
@@ -212,6 +213,12 @@ impl PathPipeline {
             push_constant_ranges: &[],
         });
 
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -230,7 +237,7 @@ impl PathPipeline {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample,
             multiview: None,
         });
 
@@ -299,7 +306,7 @@ impl PathPipeline {
         }
         // Recreate the texture and all bind groups which hold a reference to the texture view
         let texture_size = wgpu::Extent3d {
-            width: config.width * 2, 
+            width: config.width * 2,
             // For now use limited amount of path segments
             height: Self::MAX_PATH_SEGMENTS,
             depth_or_array_layers: 1,

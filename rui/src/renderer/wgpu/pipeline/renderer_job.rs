@@ -216,11 +216,15 @@ where
         staging_belt: &mut StagingBelt,
         encoder: &mut CommandEncoder,
         view: &TextureView,
-        width: u32,
-        height: u32,
     ) {
-        self.text_pipeline
-            .draw_queued(device, staging_belt, encoder, view, width, height)
+        self.text_pipeline.draw_queued(
+            device,
+            staging_belt,
+            encoder,
+            view,
+            self.config.width,
+            self.config.height,
+        )
     }
 
     pub(crate) fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, size: Extent) {
@@ -229,7 +233,7 @@ where
         self.rect_pipeline.resize(queue, &self.config);
         self.image_pipeline.resize(queue, &self.config);
         self.path_pipeline.resize(queue, &self.config);
-        self.text_pipeline.resize(&self.config);
+        //self.text_pipeline.resize(&self.config);
         self.surface.configure(device, &self.config);
     }
 }

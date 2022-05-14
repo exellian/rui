@@ -2,7 +2,7 @@ use crate::font::fallback_fonts::{FallbackFonts, FontFamily, FontStyle};
 use crate::renderer::wgpu::primitive;
 use crate::Node;
 use alloc::rc::Rc;
-use glyph_brush::Color;
+use glyph_brush::{Color, OwnedSection};
 use std::cell::{Cell, RefMut};
 use wgpu::util::StagingBelt;
 use wgpu::{
@@ -14,6 +14,7 @@ use wgpu_types::{CommandEncoderDescriptor, SurfaceConfiguration};
 pub struct TextPipeline {
     brush: GlyphBrush<()>,
     staging_belt: StagingBelt,
+    sections: Vec<OwnedSection>,
 }
 
 impl TextPipeline {
@@ -28,6 +29,7 @@ impl TextPipeline {
         TextPipeline {
             brush,
             staging_belt,
+            sections: vec![],
         }
     }
 
@@ -36,12 +38,13 @@ impl TextPipeline {
             if let Node::Text(base, text) = node {
                 eprintln!("inside text node mount");
                 let font_id = self.brush.add_font(text.font_resource());
-                let renderable_text: wgpu_glyph::Text = wgpu_glyph::Text::new(text.text())
-                    .with_color([0.7, 0.5, 0.9, 0.3])
-                    .with_scale(text.font_size())
-                    .with_font_id(font_id);
-                let section = Section::default().with_text(vec![renderable_text]);
-                self.brush.queue(section);
+                let renderable_text: wgpu_glyph::OwnedText =
+                    wgpu_glyph::OwnedText::new(text.text())
+                        .with_color([0.7, 0.5, 0.9, 0.3])
+                        .with_scale(text.font_size())
+                        .with_font_id(font_id);
+                let section = OwnedSection::<()>::default().with_text(vec![renderable_text]);
+                self.sections.push(section);
             }
         }
     }
@@ -55,6 +58,9 @@ impl TextPipeline {
         width: u32,
         height: u32,
     ) {
+        for section in &self.sections {
+            self.brush.queue(section);
+        }
         self.brush
             .draw_queued(device, staging_belt, encoder, view, width, height)
             .expect("Could not draw enqueued texts!");

@@ -206,17 +206,9 @@ where
             job.record(&mut render_pass);
         }
         let mut staging_belt = StagingBelt::new(2048);
-        job.draw_enqued_texts(
-            &base.device,
-            &mut staging_belt,
-            &mut encoder,
-            &view,
-            job.config.width,
-            job.config.height,
-        );
+        job.draw_enqued_texts(&base.device, &mut staging_belt, &mut encoder, &view);
         staging_belt.finish();
         base.queue.submit(Some(encoder.finish()));
-        staging_belt.recall();
         frame.present();
         be!(render_time);
         Ok(())

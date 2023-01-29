@@ -37,7 +37,30 @@ fn unpack(x: u32) -> vec2<u32> {
 @group(1) @binding(0) var<uniform> globals: Globals;
 @group(0) @binding(0) var<storage, read> all_paths: array<PathSegment>;
 
-///
+
+fn solve_quadratic(a: f32, b: f32, c: f32, r: ptr<function, vec2<f32>>) -> u32 {
+    let disc: f32 = b * b - 4. * a * c;
+    if (disc < 0.) {
+        // We don't care about complex solutions
+        return 0u;
+    }
+    let t0: f32 = sqrt(disc);
+    let t1: f32 = 2. * a;
+    let x0: f32 = (-b + t0) / t1;
+    let x1: f32 = (-b - t0) / t1;
+    (*r).x = x0;
+    (*r).y = x1;
+    return 2u;
+}
+
+/// Exact distance to a line
+fn line_dis(uv: vec2<f32>, p0: vec2<f32>, p1: vec2<f32>) -> f32 {
+    let dir: vec2<f32> = normalize(p1-p0);
+
+    let h: f32 = min(1.0, max(0.0, dot(dir, uv - p0) / length(p0-p1)));
+    let d: f32 = length((uv-p0) - h * (p1 - p0));
+    return d;
+}
 
 fn line_sign(uv: vec2<f32>, p0: vec2<f32>, p1: vec2<f32>) -> f32 {
     return sign((p1.x - p0.x) * (uv.y - p0.y) - (p1.y - p0.y) * (uv.x - p0.x));
@@ -249,9 +272,10 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 fn fs_main(model: VertexOutput) -> @location(0) vec4<f32> {
 
     let extent: vec2<u32> = unpack(globals.width_height);
-    let max_pixel_size: f32 = max(2.0f / f32(extent.x), 2.0f / f32(extent.y));
+    let max_pixel_size: f32 = min(2.0f / f32(extent.x), 2.0f / f32(extent.y));
     let segment: PathSegment = all_paths[model.segment_index];
     let line_sgn = line_sign(model.uv, segment.param0, segment.param3);
+    let line_dis = line_dis(model.uv, segment.param0, segment.param3);
 
     var t_min: f32;
     let dis = cubic_bezier_dis_approx(model.uv, segment.param0, segment.param1, segment.param2, segment.param3, &t_min);
@@ -264,14 +288,24 @@ fn fs_main(model: VertexOutput) -> @location(0) vec4<f32> {
         alpha = dis / max_pixel_size;
     }
 
+    // Fragment is on the line
+    if (line_dis < 0.00001) {
+        return vec4<f32>(1.0, 0.0, 0.0, alpha);
+    }
+
     /// This is the concave region
-    if (line_sgn > 0. && sgn > 0.) {
+    if (line_sgn >= 0. && sgn > 0.) {
         return vec4<f32>(1.0, 0.0, 0.0, alpha);
     }
     /// This is the convex region
     if (line_sgn <= 0. && sgn < 0.) {
-        return vec4<f32>(0.0, 1.0, 0.0, alpha);
+        return vec4<f32>(0.0, 1.0, 0.0, 1.0);
     }
+
+    if (dis < max_pixel_size && line_sgn <= 0.) {
+        return vec4<f32>(0.0, 1.0, 0.0, 1. - alpha);
+    }
+
     discard;
 /*
     let col1: f32 = distance(model.uv, segment.param0);

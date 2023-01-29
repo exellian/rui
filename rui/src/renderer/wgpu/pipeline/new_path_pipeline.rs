@@ -145,9 +145,7 @@ impl PathPipeline {
                 label: Some("globals_bind_group_layout"),
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX
-                        | wgpu::ShaderStages::FRAGMENT
-                        | wgpu::ShaderStages::COMPUTE,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -209,18 +207,7 @@ impl PathPipeline {
                 entry_point: "fs_main",
                 targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: None, /*Some(BlendState {
-                                     color: BlendComponent {
-                                         src_factor: BlendFactor::Zero,
-                                         dst_factor: BlendFactor::One,
-                                         operation: BlendOperation::Add,
-                                     },
-                                     alpha: BlendComponent {
-                                         src_factor: BlendFactor::Zero,
-                                         dst_factor: BlendFactor::One,
-                                         operation: BlendOperation::Add,
-                                     },
-                                 }),*/
+                    blend: None,
                     write_mask: ColorWrites::default(),
                 })],
             }),

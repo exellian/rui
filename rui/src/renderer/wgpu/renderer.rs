@@ -254,6 +254,7 @@ where
             job.record_prepass(&mut pre_pass);
         }
         {
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(render_pass_color_attachment)],
@@ -267,6 +268,8 @@ where
                 }),
             });
             job.record(&mut render_pass);
+
+
         }
 
         base.queue.submit(Some(encoder.finish()));

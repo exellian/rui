@@ -4,7 +4,7 @@ mod composition;
 mod grid;
 pub mod image;
 mod node;
-mod path;
+pub mod path;
 pub mod text;
 
 use crate::Component;

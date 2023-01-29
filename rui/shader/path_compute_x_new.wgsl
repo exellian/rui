@@ -4,6 +4,8 @@ let SEGMENT_TYPE_ARC: u32 = 1u;
 let SEGMENT_TYPE_QUADRATIC_BEZIER: u32 = 2u;
 let SEGMENT_TYPE_CUBIC_BEZIER: u32 = 3u;
 
+let NO_SOLUTION: f32 = -1.0;
+
 fn unpack(x: u32) -> vec2<u32> {
     return vec2<u32>(x >> 16u, x & 0xFFFFu);
 }
@@ -130,9 +132,9 @@ fn cubic(x: f32, a: f32, b: f32, c: f32, d: f32) -> f32 {
     return x_squared*x*a + x_squared*b + x*c + d;
 }
 
-// Computes the y values of a given x value
-fn solve_cubic_bezier(
-    x: f32,
+// Computes the x values of a given y value
+fn solve_cubic_bezier_x(
+    y: f32,
     p0: vec2<f32>,
     p1: vec2<f32>,
     p2: vec2<f32>,
@@ -148,15 +150,17 @@ fn solve_cubic_bezier(
     let ax: f32 = -p0.x + _3 * p1.x - _3 * p2.x + p3.x;
     let bx: f32 = _3 * p0.x - _6 * p1.x + _3 * p2.x;
     let cx: f32 = -_3 * p0.x + _3 * p1.x;
-    let dx: f32 = p0.x - x;
+    let dx: f32 = p0.x;
 
     let ay: f32 = -p0.y + _3 * p1.y - _3 * p2.y + p3.y;
     let by: f32 = _3 * p0.y - _6 * p1.y + _3 * p2.y;
     let cy: f32 = -_3 * p0.y + _3 * p1.y;
-    let dy: f32 = p0.y;
+    let dy: f32 = p0.y - y;
 
     // Get the times of the curve where b(t) = x
-    var t: vec3<f32> = solve_cubic(ax, bx, cx, dx, _0_sol, _1_sol, _2_sol);
+    var t: vec3<f32> = solve_cubic(ay, by, cy, dy, _0_sol, _1_sol, _2_sol);
+    // two columns 3 rows
+    var res: vec3<f32> = vec3<f32>(0.0);
     var tmp: f32 = 0.0;
 
     // If the intersection point is not in between start and end range
@@ -173,6 +177,7 @@ fn solve_cubic_bezier(
         *_2_sol = false;
         t.z = 0.0;
     }
+
     //pack solutions
     if (!*_0_sol) {
         *_0_sol = *_1_sol;
@@ -190,82 +195,129 @@ fn solve_cubic_bezier(
     }
 
     if (*_0_sol) {
-        t.x = cubic(t.x, ay, by, cy, dy);
+        res.x = cubic(t.x, ax, bx, cx, dx);
     }
     if (*_1_sol) {
-        t.y = cubic(t.y, ay, by, cy, dy);
-        if (t.x > t.y) {
-            tmp = t.x;
-            t.x = t.y;
-            t.y = tmp;
+        res.y = cubic(t.y, ax, bx, cx, dx);
+        if (res.x > res.y) {
+            tmp = res.x;
+            res.x = res.y;
+            res.y = tmp;
         }
     }
     if (*_2_sol) {
-        t.z = cubic(t.z, ay, by, cy, dy);
-        if (t.x > t.z) {
-            tmp = t.x;
-            t.x = t.z;
-            t.z = t.y;
-            t.y = tmp;
-        } else if (t.y > t.z) {
-            tmp = t.y;
-            t.y = t.z;
-            t.z = tmp;
+        res.z = cubic(t.z, ax, bx, cx, dx);
+        if (res.x > res.z) {
+            tmp = res.x;
+            res.x = res.z;
+            res.z = res.y;
+            res.y = tmp;
+        } else if (res.y > res.z) {
+            tmp = res.y;
+            res.y = res.z;
+            res.z = tmp;
         }
     }
-    return t;
-}
-
-fn rect_width(rect_lu: vec2<f32>, rect_rl: vec2<f32>) -> f32 {
-    return rect_rl.x - rect_lu.x;
+    return res;
 }
 
 struct Globals {
-    width_height: u32;
-    aspect_ratio: f32;
-};
+    width_height: u32,
+    aspect_ratio: f32,
+}
 
 struct PathSegment {
-    typ: u32;
-    flags: u32;
-    rect_lu: vec2<f32>;
-    rect_rl: vec2<f32>;
-    param0: vec2<f32>;
-    param1: vec2<f32>;
-    param2: vec2<f32>;
-    param3: vec2<f32>;
-};
+    typ: u32,
+    flags: u32,
+    rect_lu: vec2<f32>,
+    rect_rl: vec2<f32>,
+    param0: vec2<f32>,
+    param1: vec2<f32>,
+    param2: vec2<f32>,
+    param3: vec2<f32>,
+}
 
 struct Paths {
-    segments: array<PathSegment>;
-};
+    segments: array<PathSegment>,
+}
 
-[[group(0), binding(0)]] var<uniform> globals: Globals;
-[[group(1), binding(0)]] var<storage,read> all_paths: Paths;
-[[group(2), binding(0)]] var output_texture: texture_storage_2d<rgba32float, write>;
+@group(0) @binding(0) var<uniform> globals: Globals;
+@group(1) @binding(0) var<storage,read> all_paths: Paths;
+@group(2) @binding(0) var output_texture: texture_storage_2d<rgba32float, write>;
+@group(2) @binding(1) var output_texture_area_directions: texture_storage_2d<rgba32uint, write>;
 
 let WORKGROUP_SIZE: u32 = 256u;
 
+
+fn find_solutions_area_direction_x(
+    y: f32,
+    segment: ptr<function, PathSegment>,
+    solutions: vec3<f32>,
+    solution_count: u32
+) -> vec3<u32> {
+
+    var y_inv: bool = false;
+    var x_inv: bool = false;
+
+    // left_top -> right_bot
+    if ((*segment).param0.y <= (*segment).param3.y && (*segment).param0.x <= (*segment).param3.x) {
+        x_inv = true;
+    }
+    // right_bot -> left_top
+    else if ((*segment).param0.y >= (*segment).param3.y && (*segment).param0.x >= (*segment).param3.x) {
+        y_inv = true;
+    }
+    // right_top -> left_bot
+    else if ((*segment).param0.y >= (*segment).param3.y && (*segment).param0.x <= (*segment).param3.x) {
+        y_inv = true;
+        x_inv = true;
+    }
+
+    if (solution_count == 3u) {
+        if (y_inv) {
+            return vec3<u32>(1u, 0u, 1u);
+        }
+        return vec3<u32>(0u, 1u, 0u);
+    }
+    else if (solution_count == 2u) {
+        if (x_inv) {
+            if (y > max((*segment).param0.y, (*segment).param3.y)) {
+                return vec3<u32>(0u, 1u, 0u);
+            }
+            return vec3<u32>(1u, 0u, 0u);
+        }
+        if (y < min((*segment).param0.y, (*segment).param3.y)) {
+            return vec3<u32>(0u, 1u, 0u);
+        }
+        return vec3<u32>(1u, 0u, 0u);
+    }
+    else { //if (solution_count == 1u) {
+        if (y_inv) {
+            return vec3<u32>(1u, 0u, 0u);
+        }
+        return vec3<u32>(0u, 0u, 0u);
+    }
+}
+
 // We dispatch (height, 1, 1) workgroups
 // Each workgroup has a local amount of threads of 128 and is responsible for evaluating one path segment
-[[stage(compute), workgroup_size(256u)]]
-fn cs_main([[builtin(num_workgroups)]] num_wg: vec3<u32>, [[builtin(workgroup_id)]] wid: vec3<u32>, [[builtin(local_invocation_id)]] liid: vec3<u32>) {
+@compute @workgroup_size(256u)
+fn cs_main(@builtin(num_workgroups) num_wg: vec3<u32>, @builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) liid: vec3<u32>) {
 
     // Get the width and height of the
     let extent: vec2<u32> = unpack(globals.width_height);
     // Because each workgroup represents a path segment
-    // the workgroup_id.x is the height index and therefore the segment index
+    // the workgroup_id.x is the width index and therefore the segment index
     let segment_index: u32 = wid.x;
-    let segment: PathSegment = all_paths.segments[segment_index];
-    let segment_width: f32 = rect_width(segment.rect_lu, segment.rect_rl);
+    var segment: PathSegment = all_paths.segments[segment_index];
     // The segment width is always normalized, but because path can be scaled down we have to calculate the absolute
     // width by multiplying with the screen width
     //let absolute_segment_width: u32 = u32(round(segment_width * f32(extent.x)));
     // Local thread id marks start pixel position
     // Every round jump amount of workgroup_size to get the next pixel to process
-    for (var index: u32 = liid.x; index < extent.x; index = index + WORKGROUP_SIZE) {
+    for (var index: u32 = liid.x; index < extent.y; index = index + WORKGROUP_SIZE) {
         // Calculate the current x position
-        let x: f32 = f32(index) / f32(extent.x) + segment.rect_lu.x;
+        let y: f32 = f32(index) / f32(extent.y) + segment.rect_lu.y;
         // We do not solve anything for linear paths in the prepass
         if (segment.typ == SEGMENT_TYPE_LINEAR) {
             return;
@@ -280,8 +332,8 @@ fn cs_main([[builtin(num_workgroups)]] num_wg: vec3<u32>, [[builtin(workgroup_id
             var _2: bool = false;
             var _3: bool = false;
             var solution_count: u32 = 0u;
-            let solution: vec3<f32> = solve_cubic_bezier(
-                x,
+            var solutions: vec3<f32> = solve_cubic_bezier_x(
+                y,
                 segment.param0,
                 segment.param1,
                 segment.param2,
@@ -290,17 +342,26 @@ fn cs_main([[builtin(num_workgroups)]] num_wg: vec3<u32>, [[builtin(workgroup_id
                 &_2,
                 &_3
             );
-            if (_1) {
+
+            if (!_1) {
+                solutions.x = NO_SOLUTION;
                 solution_count = solution_count + 1u;
             }
-            if (_2) {
+            if (!_2) {
+                solutions.y = NO_SOLUTION;
                 solution_count = solution_count + 1u;
             }
-            if (_3) {
+            if (!_3) {
+                solutions.z = NO_SOLUTION;
                 solution_count = solution_count + 1u;
             }
+            let area_directions: vec3<u32> = find_solutions_area_direction_x(y, &segment, solutions, solution_count);
+
             // Store solution in the output texture
-            textureStore(output_texture, vec2<i32>(i32(index), i32(segment_index)), vec4<f32>(solution, f32(solution_count)));
+            textureStore(output_texture, vec2<i32>(i32(index), i32(segment_index)), vec4<f32>(solutions, y));
+
+            // Store gradient solution in the output gradient texture
+            textureStore(output_texture_area_directions, vec2<i32>(i32(index), i32(segment_index)), vec4<u32>(area_directions, 0u));
         }
     }
 

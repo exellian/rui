@@ -7,12 +7,14 @@ pub use renderer::Renderer;
 pub enum MSAA {
     X1,
     X4,
+    x8,
 }
 impl Into<u32> for MSAA {
     fn into(self) -> u32 {
         match self {
             MSAA::X1 => 1,
             MSAA::X4 => 4,
+            MSAA::x8 => 8,
         }
     }
 }

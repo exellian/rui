@@ -54,7 +54,7 @@ impl Class {
                 {
                     // Reset the user data
                     util::set_window_long(handle, GWL_USERDATA, 0);
-                    Box::from_raw(userdata);
+                    let _ = Box::from_raw(userdata);
                     // Userdata gets dropped here
                 }
             }

@@ -1,40 +1,40 @@
 struct VertexOutput {
-    [[builtin(position)]] position: vec4<f32>;
-    [[location(0), interpolate(flat)]] color: vec4<f32>;
-    [[location(1), interpolate(linear)]] norm_position: vec2<f32>;
-    [[location(2)]] tex_coordinates: vec2<f32>;
-};
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) norm_position: vec2<f32>,
+    @location(2) tex_coordinates: vec2<f32>,
+}
 
 struct VertexInput {
-    [[builtin(vertex_index)]] vid: u32;
-};
+    @builtin(vertex_index) vid: u32,
+}
 
 struct InstanceInput {
-    rect: vec4<f32>;
-    color: vec4<f32>;
-    radii: vec4<f32>;
-};
+    rect: vec4<f32>,
+    color: vec4<f32>,
+    radii: vec4<f32>,
+}
 
 struct Globals {
-    width_height: u32;
-    aspect_ratio: f32;
-};
+    width_height: u32,
+    aspect_ratio: f32,
+}
 
 // Input the background texture from previous render pass
 // @group(0) @binding(0) var t_background: texture2d<f32>;
 // @group(0) @binding(1) var s_background: sampler;
 
-[[group(0), binding(0)]] var<uniform> globals: Globals;
+@group(0) @binding(0) var<uniform> globals: Globals;
 
 // Input the image data
 // Currently wgsl doesn't support texture arrays
 // Therefore we draw all images individually
 // Instance uniform buffer bind group
-[[group(1), binding(0)]] var<uniform> instance: InstanceInput;
+@group(1) @binding(0) var<uniform> instance: InstanceInput;
 
 // Texture bind group
-[[group(2), binding(0)]] var tex: texture_2d<f32>;
-[[group(2), binding(1)]] var tex_sampler: sampler;
+@group(2) @binding(0) var tex: texture_2d<f32>;
+@group(2) @binding(1) var tex_sampler: sampler;
 
 // coordinate system conversion
 fn cc(pos: vec4<f32>) -> vec4<f32> {
@@ -42,7 +42,7 @@ fn cc(pos: vec4<f32>) -> vec4<f32> {
     //return vec4<f32>(pos.x, pos.y, pos.z, posg.w);
 }
 
-[[stage(vertex)]]
+@vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     if (model.vid == 0u || model.vid == 3u) {
@@ -103,7 +103,7 @@ fn border_radii(in: VertexOutput, color: vec4<f32>) -> vec4<f32> {
     return color;
 }
 
-[[stage(fragment)]]
-fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return border_radii(in, textureSample(tex, tex_sampler, in.tex_coordinates));
 }

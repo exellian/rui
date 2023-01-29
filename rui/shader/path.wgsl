@@ -1,46 +1,39 @@
 struct Globals {
-    width_height: u32;
-    aspect_ratio: f32;
-};
-
+    width_height: u32,
+    aspect_ratio: f32,
+}
 
 struct PathSegment {
-    typ: u32;
-    flags: u32;
-    rect_lu: vec2<f32>;
-    rect_rl: vec2<f32>;
-    param0: vec2<f32>;
-    param1: vec2<f32>;
-    param2: vec2<f32>;
-    param3: vec2<f32>;
-};
+    typ: u32,
+    flags: u32,
+    rect_lu: vec2<f32>,
+    rect_rl: vec2<f32>,
+    param0: vec2<f32>,
+    param1: vec2<f32>,
+    param2: vec2<f32>,
+    param3: vec2<f32>
+}
 
 struct Paths {
-    segments: array<PathSegment>;
-};
+    segments: array<PathSegment>
+}
 
 struct VertexInput {
-    [[builtin(vertex_index)]] vid: u32;
-};
+    @builtin(vertex_index) vid: u32
+}
 
 struct VertexOutput {
-    [[builtin(position)]] position: vec4<f32>;
-    [[location(0), interpolate(flat)]] color: vec4<f32>;
-    [[location(1), interpolate(linear)]] norm_position: vec2<f32>;
-    [[location(2), interpolate(flat)]] segment_range: vec2<u32>;
-};
+    @builtin(position) position: vec4<f32>,
+    @location(0) @interpolate(flat) color: vec4<f32>,
+    @location(1) @interpolate(linear) norm_position: vec2<f32>,
+    @location(2) @interpolate(flat) segment_range: vec2<u32>
+}
 
 struct Instance {
-    [[location(0)]] rect: vec4<f32>;
-    [[location(1)]] color: vec4<f32>;
-    [[location(2)]] segment_range: vec2<u32>;
-};
-
-struct EdgeValue {
-    y: f32;
-    top_is_area: bool;
-    is_set: bool;
-};
+    @location(0) rect: vec4<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) segment_range: vec2<u32>
+}
 
 let SEGMENT_TYPE_LINEAR: u32 = 0u;
 let SEGMENT_TYPE_ARC: u32 = 1u;
@@ -50,44 +43,23 @@ let SEGMENT_TYPE_CUBIC_BEZIER: u32 = 3u;
 
 let PI: f32 = 3.14159265358979323846264338327950288;
 
+let NO_SOLUTION: f32 = -1.0;
+let GRADIENT_DIRECTION_X_Y: f32 = 0.0;
+let GRADIENT_DIRECTION_X_INV_Y: f32 = 1.0;
+let GRADIENT_DIRECTION_X_Y_INV: f32 = 2.0;
+let GRADIENT_DIRECTION_X_INV_Y_INV: f32 = 3.0;
 
 // Globals
-[[group(0), binding(0)]] var<uniform> globals: Globals;
+@group(0) @binding(0) var<uniform> globals: Globals;
 // A storage buffer, for the path segments
-[[group(1), binding(0)]] var<storage, read> all_paths: Paths;
+@group(1) @binding(0) var<storage, read> all_paths: Paths;
 // A texture containing path segment solving results that got computed in a
 // previous render pass
-[[group(2), binding(0)]] var compute_texture: texture_2d<f32>;
+@group(2) @binding(0) var cubic_bezier_solutions_x: texture_2d<f32>;
+@group(2) @binding(1) var cubic_bezier_area_directions_x: texture_2d<u32>;
+@group(3) @binding(0) var cubic_bezier_solutions_y: texture_2d<f32>;
+@group(3) @binding(1) var cubic_bezier_area_directions_y: texture_2d<u32>;
 
-let ev_none: EdgeValue = EdgeValue(0.0, false, false);
-
-fn ev_some(y: f32, top_is_area: bool) -> EdgeValue {
-    var x: EdgeValue;
-    x.y = y;
-    x.top_is_area = top_is_area;
-    x.is_set = true;
-    return x;
-}
-fn ev_check_closer_top(self_ev: ptr<function, EdgeValue>, other: ptr<function, EdgeValue>, pos: vec2<f32>) {
-    if (!(*other).is_set) {
-        return;
-    }
-    let distance: f32 = (*other).y - (*self_ev).y;
-
-    if ((!(*self_ev).is_set && (*other).y < pos.y) || ((*other).y < pos.y && distance >= 0.0)) {
-        (*self_ev) = (*other);
-    }
-}
-fn ev_check_closer_bot(self_ev: ptr<function, EdgeValue>, other: ptr<function, EdgeValue>, pos: vec2<f32>) {
-    if (!(*other).is_set) {
-        return;
-    }
-    let distance: f32 = (*other).y - (*self_ev).y;
-
-    if ((!(*self_ev).is_set && (*other).y > pos.y) || ((*other).y > pos.y && distance >= 0.0)) {
-        (*self_ev) = (*other);
-    }
-}
 
 // coordinate system conversion
 fn cc(pos: vec4<f32>) -> vec4<f32> {
@@ -99,289 +71,7 @@ fn unpack(x: u32) -> vec2<u32> {
     return vec2<u32>(x >> 16u, x & 0xFFFFu);
 }
 
-fn rect_width(rect_lu: vec2<f32>, rect_rl: vec2<f32>) -> f32 {
-    return rect_rl.x - rect_lu.x;
-}
-
-fn edge_values_cubic_bezier(
-    pos: vec2<f32>,
-    segment_index: u32,
-    segment: ptr<function, PathSegment>,
-    x: ptr<function, EdgeValue>,
-    y: ptr<function, EdgeValue>,
-    z: ptr<function, EdgeValue>
-) {
-
-    // Get the width and height of the screen
-    let extent: vec2<u32> = unpack(globals.width_height);
-    let segment_width: f32 = rect_width((*segment).rect_lu, (*segment).rect_rl);
-    //let absolute_segment_width: u32 = u32(round(segment_width * f32(extent.x)));
-    let index: u32 = u32((pos.x - (*segment).rect_lu.x) * f32(extent.x));
-    let solution: vec4<f32> = textureLoad(compute_texture, vec2<i32>(i32(index), i32(segment_index)), 0);
-    var solution_count: u32 = u32(round(solution.w));
-
-    //var _1: bool = false;
-    //var _2: bool = false;
-    //var _3: bool = false;
-    //var solution_count: u32 = 0u;
-    //let solution: vec3<f32> = solve_cubic_bezier(
-    //    pos.x,
-    //    (*segment).param0,
-    //    (*segment).param1,
-    //    (*segment).param2,
-    //    (*segment).param3,
-    //    &_1,
-    //    &_2,
-    //    &_3
-    //);
-    //if (_1) {
-    //    solution_count = solution_count + 1u;
-    //}
-    //if (_2) {
-    //    solution_count = solution_count + 1u;
-    //}
-    //if (_3) {
-    //    solution_count = solution_count + 1u;
-    //}
-
-
-    var y_inv: bool = false;
-    var x_inv: bool = false;
-    // left_bot -> right_top
-    //if ((*segment).param0.x <= (*segment).param3.x && (*segment).param0.y >= (*segment).param3.y) {
-    //}
-    // left_top -> right_bot
-    if ((*segment).param0.x <= (*segment).param3.x && (*segment).param0.y <= (*segment).param3.y) {
-        x_inv = true;
-    }
-    // right_bot -> left_top
-    else if ((*segment).param0.x >= (*segment).param3.x && (*segment).param0.y >= (*segment).param3.y) {
-        y_inv = true;
-    }
-    // right_top -> left_bot
-    else if ((*segment).param0.x >= (*segment).param3.x && (*segment).param0.y <= (*segment).param3.y) {
-        y_inv = true;
-        x_inv = true;
-    }
-
-    if (solution_count == 3u) {
-        if (y_inv) {
-            *x = ev_some(solution.x, true);
-            *y = ev_some(solution.y, false);
-            *z = ev_some(solution.z, true);
-            return;
-            //return (pos.y >= solution.y && pos.y <= solution.z) || (pos.y <= solution.x);
-        }
-        *x = ev_some(solution.x, false);
-        *y = ev_some(solution.y, true);
-        *z = ev_some(solution.z, false);
-        return;
-        //return (pos.y >= solution.x && pos.y <= solution.y) || (pos.y >= solution.z);
-    }
-    else if (solution_count == 2u) {
-        if (x_inv) {
-            if (pos.x > max((*segment).param0.x, (*segment).param3.x)) {
-                *x = ev_some(solution.x, false);
-                *y = ev_some(solution.y, true);
-                *z = ev_none;
-                return;
-                //return (pos.y <= solution.x || pos.y >= solution.y);
-            }
-            *x = ev_some(solution.x, true);
-            *y = ev_some(solution.y, false);
-            *z = ev_none;
-            return;
-            //return (pos.y >= solution.x && pos.y <= solution.y);
-        }
-        if (pos.x < min((*segment).param0.x, (*segment).param3.x)) {
-            *x = ev_some(solution.x, false);
-            *y = ev_some(solution.y, true);
-            *z = ev_none;
-            return;
-            //return (pos.y <= solution.x || pos.y >= solution.y);
-        }
-        *x = ev_some(solution.x, true);
-        *y = ev_some(solution.y, false);
-        *z = ev_none;
-        return;
-        //return (pos.y >= solution.x && pos.y <= solution.y);
-    }
-    else if (solution_count == 1u) {
-        if (y_inv) {
-            *x = ev_some(solution.x, true);
-            *y = ev_none;
-            *z = ev_none;
-            return;
-            //return pos.y >= solution.x;
-        }
-        *x = ev_some(solution.x, false);
-        *y = ev_none;
-        *z = ev_none;
-        return;
-        //return pos.y <= solution.x;
-    }
-    *x = ev_none;
-    *y = ev_none;
-    *z = ev_none;
-    return;
-}
-
-// returns in most cases one edge value which corresponds to the intersection point
-// Only if the line has a zero greadient then two edge values are returned
-fn edge_values_linear(
-    pos: vec2<f32>,
-    segment: ptr<function, PathSegment>,
-    x_out: ptr<function, EdgeValue>,
-    y_out: ptr<function, EdgeValue>
-) {
-    if (pos.x < min((*segment).param0.x, (*segment).param1.x) ||
-        pos.x > max((*segment).param0.x, (*segment).param1.x)) {
-        *x_out = ev_none;
-        *y_out = ev_none;
-        return;
-    }
-    var dx: f32;
-    var dy: f32;
-    if ((*segment).param0.x < (*segment).param1.x) {
-        dx = (*segment).param1.x - (*segment).param0.x;
-        dy = (*segment).param1.y - (*segment).param0.y;
-    } else {
-        dx = (*segment).param0.x - (*segment).param1.x;
-        dy = (*segment).param0.y - (*segment).param1.y;
-    }
-    // If we don't have a gradient
-    if (dx == 0.0) {
-        *x_out = ev_none;//ev_some(min((*segment).param0.y, (*segment).param1.y), false);
-        *y_out = ev_none;//ev_some(max((*segment).param0.y, (*segment).param1.y), true);
-        return;
-    }
-    if (dy == 0.0) {
-        if ((*segment).param0.x < (*segment).param1.x) {
-            *x_out = ev_some((*segment).param0.y, false);
-        } else {
-            *x_out = ev_some((*segment).param0.y, true);
-        }
-        *y_out = ev_none;
-        return;
-    }
-    var top_is_area: bool;
-    let y: f32 = (dy / dx) * (pos.x - (*segment).param0.x) + (*segment).param0.y;
-
-    // left_bot -> right_top
-    if ((*segment).param0.x < (*segment).param1.x && (*segment).param0.y > (*segment).param1.y) {
-        top_is_area = false;
-    }
-    // left_top -> right_bot
-    else if ((*segment).param0.x < (*segment).param1.x && (*segment).param0.y < (*segment).param1.y) {
-        top_is_area = false;
-    }
-    // right_bot -> left_top
-    else if ((*segment).param0.x > (*segment).param1.x && (*segment).param0.y > (*segment).param1.y) {
-        top_is_area = true;
-    }
-    // right_top -> left_bot
-    else if ((*segment).param0.x > (*segment).param1.x && (*segment).param0.y < (*segment).param1.y) {
-        top_is_area = true;
-    }
-    *x_out = ev_some(y, top_is_area);
-    *y_out = ev_none;
-    return;
-}
-
-[[stage(fragment)]]
-fn fs_main(vertex_out: VertexOutput) -> [[location(0)]] vec4<f32> {
-
-    if (false) {
-
-        // Get the width and height of the screen
-        let extent: vec2<u32> = unpack(globals.width_height);
-
-        let index_x: u32 = u32(round(vertex_out.norm_position.x * f32(extent.x)));
-        let index_y: u32 = u32(round(vertex_out.norm_position.y * f32(extent.y)));
-        let solution: vec4<f32> = textureLoad(compute_texture, vec2<i32>(i32(index_x), i32(index_y)), 0);
-        //var solution_count: u32 = u32(round(so
-        //return vec4<f32>(f32(index) / f32(absolute_segment_width));
-        //return vec4<f32>(f32(index) / f32(extent.x), f32(i) / f32(extent.y), 0.0, 0.0);
-        //return solution;
-        return solution;
-    }
-
-    //let extent: vec2<u32> = unpack(globals.width_height);
-    // Relative width and height of one pixel
-    //let pt: vec2<f32> = vec2<f32>(0.98 / f32(extent.x), 0.98 / f32(extent.y));
-    var y_closest_top: EdgeValue = ev_none;
-    var y_closest_bot: EdgeValue = ev_none;
-
-
-    // Go through all path segments and find the closest edge values
-    for (var i: u32 = vertex_out.segment_range.x; i < vertex_out.segment_range.y; i = i + 1u) {
-
-        var segment: PathSegment = all_paths.segments[i];
-
-        // If current x vertical line not intersecting with the segment skip the segment
-        if (vertex_out.norm_position.x < segment.rect_lu.x || vertex_out.norm_position.x > segment.rect_rl.x) {
-            continue;
-        }
-
-        if (segment.typ == SEGMENT_TYPE_LINEAR) {
-            var x: EdgeValue = ev_none;
-            var y: EdgeValue = ev_none;
-            edge_values_linear(vertex_out.norm_position, &segment, &x, &y);
-            ev_check_closer_top(&y_closest_top, &x, vertex_out.norm_position);
-            ev_check_closer_top(&y_closest_top, &y, vertex_out.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &x, vertex_out.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &y, vertex_out.norm_position);
-        } else if (segment.typ == SEGMENT_TYPE_ARC) {
-
-        } else if (segment.typ == SEGMENT_TYPE_QUADRATIC_BEZIER) {
-
-        } else if (segment.typ == SEGMENT_TYPE_CUBIC_BEZIER) {
-            if (false) {
-
-                // Get the width and height of the screen
-                let extent: vec2<u32> = unpack(globals.width_height);
-                let segment_width: f32 = rect_width(segment.rect_lu, segment.rect_rl);
-                let absolute_segment_width: u32 = u32(round(segment_width * f32(extent.x)));
-                let index: u32 = u32(vertex_out.norm_position.x * f32(absolute_segment_width));
-                let solution: vec4<f32> = textureLoad(compute_texture, vec2<i32>(i32(index), i32(i)), 0);
-                //var solution_count: u32 = u32(round(solution.w));
-
-                //return vec4<f32>(f32(index) / f32(absolute_segment_width));
-                //return vec4<f32>(f32(index) / f32(extent.x), f32(i) / f32(extent.y), 0.0, 0.0);
-                //return solution;
-
-            }
-
-            var x: EdgeValue = ev_none;
-            var y: EdgeValue = ev_none;
-            var z: EdgeValue = ev_none;
-            edge_values_cubic_bezier(vertex_out.norm_position, i, &segment, &x, &y, &z);
-            ev_check_closer_top(&y_closest_top, &x, vertex_out.norm_position);
-            ev_check_closer_top(&y_closest_top, &y, vertex_out.norm_position);
-            ev_check_closer_top(&y_closest_top, &z, vertex_out.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &x, vertex_out.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &y, vertex_out.norm_position);
-            ev_check_closer_bot(&y_closest_bot, &z, vertex_out.norm_position);
-        } else {
-
-        }
-    }
-
-
-    if (y_closest_top.top_is_area) {
-        //return vec4<f32>(y_closest_top.y);
-    }
-
-    // If the current point lays in between the two closest edge values at the current x, y coord,
-    // Then the point is part of an area
-    if (y_closest_top.is_set && y_closest_bot.is_set && !y_closest_top.top_is_area && y_closest_bot.top_is_area) {
-        return vertex_out.color;
-    }
-
-    return vec4<f32>(0.2);
-}
-
-[[stage(vertex)]]
+@vertex
 fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
     var vertex_out: VertexOutput;
     if (model.vid == 0u || model.vid == 3u) {
@@ -391,7 +81,7 @@ fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
         vertex_out.position = cc(vec4<f32>(instance.rect.z, instance.rect.w * globals.aspect_ratio, 0.0, 1.0));
         vertex_out.norm_position = vec2<f32>(instance.rect.z, instance.rect.w);
     } else if (model.vid == 1u) {
-        vertex_out.position = cc(vec4<f32>(instance.rect.x, instance.rect.w * globals.aspect_ratio, 0.0, 1.0));
+        vertex_out.position =  cc(vec4<f32>(instance.rect.x, instance.rect.w * globals.aspect_ratio, 0.0, 1.0));
         vertex_out.norm_position = vec2<f32>(instance.rect.x, instance.rect.w);
     } else {
         vertex_out.position = cc(vec4<f32>(instance.rect.z, instance.rect.y * globals.aspect_ratio, 0.0, 1.0));
@@ -400,4 +90,303 @@ fn vs_main(model: VertexInput, instance: Instance) -> VertexOutput {
     vertex_out.color = instance.color;
     vertex_out.segment_range = instance.segment_range;
     return vertex_out;
+}
+
+struct EdgePoint {
+    position: vec2<f32>,
+    // Inverted means that the area is not at the bottom or right and is instead on the top or left
+    // So the default is: area is at BOTTOM and RIGHT
+    inv: bool,
+    is_set: bool,
+}
+
+let EP_NONE: EdgePoint = EdgePoint(vec2<f32>(0.0, 0.0), false, false);
+
+// ########## Hilfsfunktionen ##########
+
+fn linearf(x: f32, m: f32, t: f32) -> f32 {
+    return m * x + t;
+}
+
+fn process_closer_x(pos: vec2<f32>, current_in_out: ptr<function, EdgePoint>, new_in: ptr<function, EdgePoint>, left: bool) {//, x_axis_inv: bool) {
+    if (!(*new_in).is_set) {
+        return;
+    }
+    var x_diff: f32 = (*new_in).position.x - pos.x;
+
+    // If the new point is on the right side
+    if ((x_diff > 0.0 && left) || (x_diff < 0.0 && !left)) {
+
+        if (!(*current_in_out).is_set) {
+            (*current_in_out) = (*new_in);
+        } else {
+            let x_old_distance: f32 = abs((*current_in_out).position.x - pos.x);
+            let x_new_distance: f32 = abs(x_diff);
+            if (x_new_distance < x_old_distance) {
+                (*current_in_out) = (*new_in);
+            }
+        }
+    }
+}
+
+fn process_closer_y(pos: vec2<f32>, current_in_out: ptr<function, EdgePoint>, new_in: ptr<function, EdgePoint>, top: bool) {
+    if (!(*new_in).is_set) {
+        return;
+    }
+    var y_diff: f32 = (*new_in).position.y - pos.y; // -1 because the y_axis is inverted
+
+    // If the new point is on the right side
+    if ((y_diff > 0.0 && top) || (y_diff < 0.0 && !top)) {
+
+        if (!(*current_in_out).is_set) {
+            (*current_in_out) = (*new_in);
+        } else {
+            let y_old_distance: f32 = abs((*current_in_out).position.y - pos.y);
+            let y_new_distance: f32 = abs(y_diff);
+            if (y_new_distance < y_old_distance) {
+                (*current_in_out) = (*new_in);
+            }
+        }
+    }
+}
+
+// ########## Main solving functions ##########
+
+fn edge_points_linear(
+    // current position in the svg view
+    pos: vec2<f32>,
+    // linear segment
+    segment: ptr<function, PathSegment>,
+    // EdgePoint in x direction for the current y position
+    x_out: ptr<function, EdgePoint>,
+    // EdgePoint in y direction for the current x position
+    y_out: ptr<function, EdgePoint>
+) {
+    var delta: vec2<f32> = (*segment).param1 - (*segment).param0;
+
+    (*x_out) = EP_NONE;
+    (*y_out) = EP_NONE;
+
+    if (delta.x == 0.0 && delta.y != 0.0) {
+        // segment is verical line
+        // no y solution
+
+        // |
+        // |----p
+        // |
+
+        (*x_out).position = vec2<f32>((*segment).param0.x, pos.y);
+        if (delta.y < 0.0) {
+            (*x_out).inv = true;
+        }
+        (*x_out).is_set = true;
+    } else if (delta.y == 0.0 && delta.x != 0.0) {
+        // segment is horizontal line
+        // no x solution
+
+        // ____________
+        //      |
+        //      |
+        //      p
+        (*y_out).position = vec2<f32>(pos.x, (*segment).param0.y);
+        if (delta.x >= 0.0) {
+            (*y_out).inv = true;
+        }
+        (*y_out).is_set = true;
+    } else if (delta.y != 0.0 && delta.x != 0.0) {
+
+        // This is the normal case where we have a oblique line
+        //                    x
+        //       /            |
+        //      /|            |
+        //     / |            |
+        //    /  |            |
+        //   /---p_1          |
+        //  /----------------p_2
+
+        // p_2 doesn't have a intersection point with the line in y direction but in x direction (keep that case in mind and vice versa)
+
+        let grady = delta.x / delta.y;
+        let gradx = 1.0 / grady; // Note: this is equals delta.y / delta.x
+
+        // We have to equations for the line:
+
+        // y(x) = grady * x + ty  <=> y(x) - grady * x = ty
+        // x(y) = gradx * y + tx  <=> x(y) - gradx * y = tx
+
+        let ty = (*segment).param0.y - grady * (*segment).param0.x;
+        let tx = (*segment).param0.x - gradx * (*segment).param0.y;
+
+        // In this case we have a y-solution
+        if (pos.x >= (*segment).rect_lu.x && pos.x <= (*segment).rect_rl.x) {
+            (*y_out).position = vec2<f32>(pos.x, grady * pos.x + ty);
+            if (delta.x >= 0.0) {
+                (*y_out).inv = true;
+            }
+            (*y_out).is_set = true;
+        }
+
+        // In this case we have a x-solution
+        if (pos.y >= (*segment).rect_lu.y && pos.y <= (*segment).rect_rl.y) {
+            (*x_out).position = vec2<f32>(gradx * pos.y + tx, pos.y);
+            if (delta.y < 0.0) {
+                (*x_out).inv = true;
+            }
+            (*x_out).is_set = true;
+        }
+    } else {
+
+        // both delta.x and delta.y are equal to 0
+        // In this case the line is a point and we simply ignore it
+
+
+        //
+        //      x
+        //
+        //
+        //          p
+    }
+}
+
+fn edge_points_cubic_bezier(
+    // current position in the svg view
+    pos: vec2<f32>,
+    segment_index: u32,
+    segment: ptr<function, PathSegment>,
+    x1: ptr<function, EdgePoint>,
+    x2: ptr<function, EdgePoint>,
+    x3: ptr<function, EdgePoint>,
+    y1: ptr<function, EdgePoint>,
+    y2: ptr<function, EdgePoint>,
+    y3: ptr<function, EdgePoint>
+) {
+    (*x1) = EP_NONE;
+    (*x2) = EP_NONE;
+    (*x3) = EP_NONE;
+    (*y1) = EP_NONE;
+    (*y2) = EP_NONE;
+    (*y3) = EP_NONE;
+
+    let extent: vec2<u32> = unpack(globals.width_height);
+    let segment_extent: vec2<f32> = (*segment).rect_rl - (*segment).rect_lu;
+
+    // For cubic beziers we actually do not solve anything in the fragment shader
+    // we already did that in a compute shader prepass.
+    // The results are stored in 4 textures
+
+    if (pos.y >= (*segment).rect_lu.y || pos.y <= (*segment).rect_rl.y) {
+        let index_x: u32 = u32((pos.y - (*segment).rect_lu.y) * f32(extent.y));
+        let solutions_x: vec4<f32> = textureLoad(cubic_bezier_solutions_x, vec2<i32>(i32(index_x), i32(segment_index)), 0);
+        let area_directions_x: vec4<u32> = textureLoad(cubic_bezier_area_directions_x, vec2<i32>(i32(index_x), i32(segment_index)), 0);
+
+        if (solutions_x.x > NO_SOLUTION) {
+            (*x1).position = vec2<f32>(solutions_x.x, solutions_x.w);
+            (*x1).inv = area_directions_x.x == 1u;
+            (*x1).is_set = true;
+        }
+        if (solutions_x.y > NO_SOLUTION) {
+            (*x2).position = vec2<f32>(solutions_x.y, solutions_x.w);
+            (*x2).inv = area_directions_x.y == 1u;
+            (*x2).is_set = true;
+        }
+        if (solutions_x.z > NO_SOLUTION) {
+            (*x2).position = vec2<f32>(solutions_x.z, solutions_x.w);
+            (*x2).inv = area_directions_x.z == 1u;
+            (*x2).is_set = true;
+        }
+    }
+
+    if (pos.x >= (*segment).rect_lu.x || pos.x <= (*segment).rect_rl.x) {
+        let index_y: u32 = u32((pos.x - (*segment).rect_lu.x) * f32(extent.x));
+        let solutions_y: vec4<f32> = textureLoad(cubic_bezier_solutions_y, vec2<i32>(i32(index_y), i32(segment_index)), 0);
+        let area_directions_y: vec4<u32> = textureLoad(cubic_bezier_area_directions_y, vec2<i32>(i32(index_y), i32(segment_index)), 0);
+
+        if (solutions_y.x > NO_SOLUTION) {
+            (*y1).position = vec2<f32>(solutions_y.w, solutions_y.x);
+            (*y1).inv = area_directions_y.x == 1u;
+            (*y1).is_set = true;
+        }
+        if (solutions_y.y > NO_SOLUTION) {
+            (*y2).position = vec2<f32>(solutions_y.w, solutions_y.y);
+            (*y2).inv = area_directions_y.y == 1u;
+            (*y2).is_set = true;
+        }
+        if (solutions_y.z > NO_SOLUTION) {
+            (*y3).position = vec2<f32>(solutions_y.w, solutions_y.z);
+            (*y3).inv = area_directions_y.z == 1u;
+            (*y3).is_set = true;
+        }
+    }
+}
+
+@fragment
+fn fs_main(vertex_out: VertexOutput) -> @location(0) vec4<f32> {
+
+    let background: vec3<f32> = vec3<f32>(0.2);
+    var y_closest_top: EdgePoint = EP_NONE;
+    var y_closest_bot: EdgePoint = EP_NONE;
+    var x_closest_left: EdgePoint = EP_NONE;
+    var x_closest_right: EdgePoint = EP_NONE;
+
+    // Go through all path segments and find the closest edge values
+    for (var i: u32 = vertex_out.segment_range.x; i < vertex_out.segment_range.y; i = i + 1u) {
+
+        var segment: PathSegment = all_paths.segments[i];
+
+        // If current x vertical line not intersecting with the segment bounding box the segment and
+        // if current y horizontal line not intersecting with the segment bounding box skip the segment
+        if ((vertex_out.norm_position.x < segment.rect_lu.x || vertex_out.norm_position.x > segment.rect_rl.x) && (vertex_out.norm_position.y < segment.rect_lu.y || vertex_out.norm_position.y > segment.rect_rl.y)) {
+            continue;
+        }
+
+        if (segment.typ == SEGMENT_TYPE_LINEAR) {
+            var x: EdgePoint;
+            var y: EdgePoint;
+            edge_points_linear(vertex_out.norm_position, &segment, &x, &y);
+            process_closer_y(vertex_out.norm_position, &y_closest_top, &y, true);
+            process_closer_y(vertex_out.norm_position, &y_closest_bot, &y, false);
+            process_closer_x(vertex_out.norm_position, &x_closest_left, &x, true);
+            process_closer_x(vertex_out.norm_position, &x_closest_right, &x, false);
+            // TODO check closer than any other edge point
+        } else if (segment.typ == SEGMENT_TYPE_ARC) {
+
+        } else if (segment.typ == SEGMENT_TYPE_QUADRATIC_BEZIER) {
+
+        } else if (segment.typ == SEGMENT_TYPE_CUBIC_BEZIER) {
+            var x1: EdgePoint;
+            var x2: EdgePoint;
+            var x3: EdgePoint;
+            var y1: EdgePoint;
+            var y2: EdgePoint;
+            var y3: EdgePoint;
+            edge_points_cubic_bezier(vertex_out.norm_position, i, &segment, &x1, &x2, &x3, &y1, &y2, &y3);
+            process_closer_y(vertex_out.norm_position, &y_closest_top, &y1, true);
+            process_closer_y(vertex_out.norm_position, &y_closest_bot, &y1, false);
+            process_closer_y(vertex_out.norm_position, &y_closest_top, &y2, true);
+            process_closer_y(vertex_out.norm_position, &y_closest_bot, &y2, false);
+            process_closer_y(vertex_out.norm_position, &y_closest_top, &y3, true);
+            process_closer_y(vertex_out.norm_position, &y_closest_bot, &y3, false);
+            process_closer_x(vertex_out.norm_position, &x_closest_left, &x1, true);
+            process_closer_x(vertex_out.norm_position, &x_closest_right, &x1, false);
+            process_closer_x(vertex_out.norm_position, &x_closest_left, &x2, true);
+            process_closer_x(vertex_out.norm_position, &x_closest_right, &x2, false);
+            process_closer_x(vertex_out.norm_position, &x_closest_left, &x3, true);
+            process_closer_x(vertex_out.norm_position, &x_closest_right, &x3, false);
+        } else {
+
+        }
+    }
+
+    if (y_closest_top.is_set && !y_closest_top.inv ) {//  && !y_closest_top.inv && y_closest_bot.inv) {
+        return vec4<f32>(0.0, 0.0, 1.0, 1.0);
+    }
+
+    if (x_closest_left.is_set && x_closest_right.is_set && y_closest_top.is_set && y_closest_bot.is_set) {
+        //return vec4<f32>(0.0, 0.0, 1.0, 1.0);
+//return vec4<f32>(0.0, 0.0, 1.0, 1.0);
+        if (y_closest_top.inv && y_closest_bot.inv) {
+            //return vec4<f32>(0.0, 0.0, 1.0, 1.0);
+        }
+    }
+    return vec4<f32>(background, 1.0);
 }

@@ -9,4 +9,5 @@ pub(crate) use globals::Globals;
 pub(crate) use instance::Instance;
 pub(crate) use path::Path;
 pub(crate) use path::PathSegment;
+pub(crate) use path::PathSegment1;
 pub(crate) use rect::Rect;

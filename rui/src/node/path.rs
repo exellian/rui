@@ -56,9 +56,10 @@ impl Builder {
     }
 }
 
+#[derive(Clone)]
 pub struct PathNode {
-    from: Point2D,
-    segments: Vec<PathSegment>,
+    pub(crate) from: Point2D,
+    pub(crate) segments: Vec<PathSegment>,
 }
 impl PathNode {
     pub fn new(from: Point2D, segments: Vec<PathSegment>) -> Self {

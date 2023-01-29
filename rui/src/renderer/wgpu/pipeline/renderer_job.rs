@@ -1,6 +1,7 @@
 use crate::node::base::BaseNode;
+use crate::node::path::PathNode;
 use crate::renderer::wgpu::pipeline::image_pipeline::ImagePipeline;
-use crate::renderer::wgpu::pipeline::path_pipeline::PathPipeline;
+use crate::renderer::wgpu::pipeline::new_path_pipeline::PathPipeline;
 use crate::renderer::wgpu::pipeline::rect_pipeline::RectPipeline;
 use crate::renderer::wgpu::primitive;
 use crate::renderer::MSAA;
@@ -9,6 +10,7 @@ use crate::{Backend, Node};
 use async_recursion::async_recursion;
 use rui_util::{be, bs, Extent};
 use std::marker::PhantomData;
+use wgpu_types::TextureFormat;
 
 pub struct RenderJob<B>
 where
@@ -20,6 +22,7 @@ where
     pub(crate) image_pipeline: ImagePipeline,
     pub(crate) path_pipeline: PathPipeline,
     pub(crate) multisampling_framebuffer: Option<wgpu::TextureView>,
+    pub(crate) stencil_framebuffer: wgpu::TextureView,
     pub(crate) msaa: MSAA,
     _b: PhantomData<B>,
 }
@@ -27,6 +30,31 @@ impl<B> RenderJob<B>
 where
     B: Backend,
 {
+    fn create_stencil_framebuffer(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        msaa: &MSAA,
+    ) -> wgpu::TextureView {
+        let texture_extent = wgpu::Extent3d {
+            width: config.width,
+            height: config.height,
+            depth_or_array_layers: 1,
+        };
+        let texture_descriptor = &wgpu::TextureDescriptor {
+            size: texture_extent,
+            mip_level_count: 1,
+            sample_count: msaa.clone().into(),
+            dimension: wgpu::TextureDimension::D2,
+            format: TextureFormat::Depth24PlusStencil8,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: Some("Stencil Buffer"),
+        };
+
+        device
+            .create_texture(texture_descriptor)
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
     pub fn create_multisampling_framebuffer(
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
@@ -69,6 +97,8 @@ where
             )),
         };
 
+        let stencil_framebuffer = Self::create_stencil_framebuffer(device, &config, &msaa);
+
         RenderJob {
             config,
             surface,
@@ -76,6 +106,7 @@ where
             image_pipeline,
             path_pipeline,
             multisampling_framebuffer,
+            stencil_framebuffer,
             msaa,
             _b: PhantomData,
         }
@@ -118,7 +149,7 @@ where
         node: &mut Node,
         rects: &mut Vec<primitive::Rect>,
         images: &mut Vec<primitive::Image>,
-        paths: &mut Vec<primitive::Path>,
+        paths: &mut Vec<PathNode>,
     ) {
         match node {
             Node::Rectangle(base) => rects.push(primitive::Rect {
@@ -131,6 +162,8 @@ where
                 Self::flatten(root, parent, b.node_mut(), rects, images, paths).await;
             }
             Node::Path(base, p) => {
+                paths.push(p.clone());
+                /*
                 let mut segments = Vec::with_capacity(p.segments().len());
                 let mut from = p.from();
                 for s in p.segments() {
@@ -179,6 +212,7 @@ where
                     color: base.background.as_raw(),
                     segments,
                 })
+                */
             }
             Node::Composition(_, c) => {
                 for node in c.layers_mut() {
@@ -217,16 +251,16 @@ where
         Self::flatten(&root, &root, node, &mut rects, &mut images, &mut paths).await;
         self.rect_pipeline.mount(device, &rects);
         self.image_pipeline.mount(device, queue, &images).await;
-        self.path_pipeline.mount(device, paths);
+        self.path_pipeline.mount(device, &paths);
     }
 
-    pub(crate) fn record_compute<'a>(&'a self, compute_pass: &mut wgpu::ComputePass<'a>) {
-        self.path_pipeline.record_compute(compute_pass);
+    pub(crate) fn record_prepass<'a>(&'a self, pre_pass: &mut wgpu::RenderPass<'a>) {
+        self.path_pipeline.record_stencil_pass(pre_pass);
     }
 
     pub(crate) fn record<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
-        self.rect_pipeline.record(render_pass);
-        self.image_pipeline.record(render_pass);
+        //self.rect_pipeline.record(render_pass);
+        //self.image_pipeline.record(render_pass);
         self.path_pipeline.record(render_pass);
     }
 
@@ -235,7 +269,7 @@ where
         self.config.height = size.height.max(1);
         self.rect_pipeline.resize(queue, &self.config);
         self.image_pipeline.resize(queue, &self.config);
-        self.path_pipeline.resize(device, queue, &self.config);
+        self.path_pipeline.resize(queue, &self.config);
 
         if self.multisampling_framebuffer.is_some() {
             self.multisampling_framebuffer = Some(Self::create_multisampling_framebuffer(
@@ -244,6 +278,8 @@ where
                 &self.msaa,
             ));
         }
+        self.stencil_framebuffer =
+            Self::create_stencil_framebuffer(device, &self.config, &self.msaa);
         self.surface.configure(device, &self.config);
     }
 }

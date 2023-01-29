@@ -1,4 +1,6 @@
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+};
 
 use crate::event::EventLoopTarget;
 pub use attributes::Attributes as SurfaceAttributes;
@@ -42,5 +44,11 @@ impl<'main, 'child> Surface<'main, 'child> {
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {
     fn raw_window_handle(&self) -> RawWindowHandle {
         self.0.raw_window_handle()
+    }
+}
+
+unsafe impl<'main, 'child> HasRawDisplayHandle for Surface<'main, 'child> {
+    fn raw_display_handle(&self) -> RawDisplayHandle {
+        self.0.raw_display_handle()
     }
 }

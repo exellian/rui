@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 use rui::component::Component;
 use rui::instance::backend::Backend;
-use rui::node::{comp, component, path, Node};
+use rui::node::{comp, component, path, rect, Node};
 use rui::surface::Surface;
 use rui_util::Extent;
 
@@ -21,7 +21,7 @@ impl Component for Root {
     async fn node(&mut self) -> Node {
         let mut paths = vec![];
 
-        for _ in 0..25 {
+        for _ in 0..1 {
             paths.push(
                 path([22, 234, 0], [0.1, 0.1])
                     .cubic_bezier([0.9, 0.1], [0.2, 0.05], [0.8, 0.15])
@@ -36,10 +36,25 @@ impl Component for Root {
                     .cubic_bezier([0.1, 0.2], [0.1, 0.7], [0.7, 0.3])
                     .close(),
             );
+            /*
+            paths.push(
+                path([22, 234, 0], [0.1, 0.1])
+                    .cubic_bezier([0.9, 0.2], [0.2, 0.05], [0.8, 0.15])
+                    .cubic_bezier([0.8, 0.9], [0.95, 0.4], [0.7, 0.8])
+                    .cubic_bezier([0.2, 0.8], [0.7, 0.95], [0.3, 0.95])
+                    .close(),
+            );*/
+            /*paths.push(
+                path([22, 234, 0], [0.1, 0.1])
+                    .linear([0.9, 0.1])
+                    .linear([0.9, 0.9])
+                    .linear([0.1, 0.9])
+                    .close()
+            );*/
         }
 
         comp(paths)
-        //rect([22, 234, 0], [0.05, 0.05, 0.05,  0.1])
+        //rect([22, 234, 0], [0.05, 0.05, 0.05, 0.1])
     }
 }
 
@@ -53,7 +68,6 @@ async fn main() {
             width: 1440,
             height: 900,
         })
-        .resizable(true)
         .build()
         .await;
     surface.mount(component(Root)).await.unwrap();

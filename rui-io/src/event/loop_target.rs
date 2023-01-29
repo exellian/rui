@@ -50,7 +50,7 @@ where
         {
             let mut controls_guard = main.child_loop_controls.write().unwrap();
             let thread_handle = unsafe {
-                // Use experimental feature to
+                // TODO Use experimental feature to
                 std::thread::spawn(move || {
                     // This is only safe because we ae making sure that the main loop was created before
                     // any other child thread and that the main loop lives the longest

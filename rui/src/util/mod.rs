@@ -2,7 +2,7 @@ mod color;
 mod flags;
 mod handler;
 mod id;
-mod path;
+pub mod path;
 mod point;
 mod rect;
 mod resource;

@@ -1,5 +1,5 @@
 # rui
-Rust aims to be a framework for building modern ui with Rust.
+Rui aims to be a framework for building modern ui with Rust.
 It should 
 
 ## Build instructions

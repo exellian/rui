@@ -1,4 +1,6 @@
 use crate::renderer::wgpu::primitive;
+use crate::renderer::MSAA;
+use crate::util;
 use crate::util::Resource;
 use std::borrow::Cow;
 use std::fs::File;
@@ -26,7 +28,7 @@ pub struct ImagePipeline {
     instance_bind_group_layout: BindGroupLayout,
 }
 impl ImagePipeline {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -38,6 +40,7 @@ impl ImagePipeline {
         });
 
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
 
@@ -111,7 +114,7 @@ impl ImagePipeline {
                 label: Some("texture_bind_group_layout"),
             });
 
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
                 "../../../../shader/image.wgsl"
@@ -129,6 +132,12 @@ impl ImagePipeline {
             push_constant_ranges: &[],
         });
 
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -140,14 +149,14 @@ impl ImagePipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[config.format.into()],
+                targets: &[Some(config.format.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 cull_mode: Some(wgpu::Face::Back),
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample,
             multiview: None,
         });
 
@@ -186,6 +195,7 @@ impl ImagePipeline {
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));

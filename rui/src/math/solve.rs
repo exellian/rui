@@ -1,7 +1,7 @@
 use crate::math::num::Result::{Defined, Undefined};
-use crate::math::num::{Acos, Cbrt, Cos, Field, Result, Sqrt};
-use crate::math::{cubic_bezier, Vec2, Vec3};
-use std::cmp::{max, min};
+use crate::math::num::{Acos, Cbrt, Cos, Field, Max, Min, Result, Sqrt};
+use crate::math::{cubic_bezier, max, min, Vec2, Vec3, Vec4};
+use core::fmt::Debug;
 
 #[inline]
 fn solve_linear<T>(a: T, b: T) -> Result<T>
@@ -107,9 +107,9 @@ where
 /// - p2: The second helper point of the cubic bezier
 /// - p3: The end point of the cubic bezier
 #[inline]
-fn solve_minmax_cubic_bezier<T>(p0: Vec2<T>, p1: Vec2<T>, p2: Vec2<T>, p3: Vec2<T>) -> Vec2<Vec2<T>>
+pub fn solve_minmax_cubic_bezier<T>(p0: Vec2<T>, p1: Vec2<T>, p2: Vec2<T>, p3: Vec2<T>) -> Vec4<T>
 where
-    T: Field + Sqrt + PartialEq + Ord,
+    T: Field + Min<Output = T> + Max<Output = T> + Sqrt + PartialEq + PartialOrd + Debug,
 {
     let _3 = T::ONE + T::ONE + T::ONE;
     let _6 = _3 + _3;
@@ -149,5 +149,5 @@ where
         }
     }
 
-    [[x_min, y_min].into(), [x_max, y_max].into()].into()
+    [x_min, y_min, x_max, y_max].into()
 }

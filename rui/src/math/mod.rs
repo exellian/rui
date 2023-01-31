@@ -1,10 +1,29 @@
 mod num;
+pub mod rect;
 mod solve;
 mod vec;
 
-use crate::math::num::{Ring, Sqrt};
+use crate::math::num::{Max, Min};
+pub use crate::math::num::{Result, Ring, Sqrt};
+pub use solve::*;
 use std::ops::{Add, Mul};
 pub use vec::*;
+
+#[inline]
+pub fn min<T>(x: T, y: T) -> T
+where
+    T: Min<Output = T>,
+{
+    x.min(y)
+}
+
+#[inline]
+pub fn max<T>(x: T, y: T) -> T
+where
+    T: Max<Output = T>,
+{
+    x.max(y)
+}
 
 #[inline]
 pub fn linear<T, const SIZE: usize>(

@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use wgpu::{LoadOp, Operations, RenderPassDepthStencilAttachment};
+use wgpu_types::{Backends, Color, CompositeAlphaMode};
 
 use rui_io::surface::SurfaceId;
 use rui_util::{be, bs, Extent};
@@ -6,6 +8,7 @@ use rui_util::{be, bs, Extent};
 use crate::node::Node;
 use crate::renderer::wgpu::pipeline::renderer_job::RenderJob;
 use crate::renderer::wgpu::RendererError;
+use crate::renderer::MSAA;
 use crate::Backend;
 
 pub struct RendererBase {
@@ -35,10 +38,15 @@ impl RendererBase {
         let adapter_features = adapter.features();
         // Make sure we use the texture resolution limits from the adapter, so we can support images the size of the surface.
         let mut needed_limits =
-            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
-        needed_limits.max_storage_buffers_per_shader_stage = 4;
-        needed_limits.max_storage_buffer_binding_size = 128 << 20;
-
+            wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
+        /*
+                needed_limits.max_storage_buffers_per_shader_stage = 4;
+                needed_limits.max_storage_buffer_binding_size = 128 << 20;
+                needed_limits.max_storage_textures_per_shader_stage = 4;
+                needed_limits.max_compute_workgroup_size_x = 128;
+                needed_limits.max_compute_workgroup_size_y = 1;
+                needed_limits.max_compute_workgroup_size_z = 1;
+        */
         let (device, queue) = match adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
@@ -108,9 +116,10 @@ where
                 let surface_handle = match &mut self.base {
                     Some(base) => unsafe { base.instance.create_surface(surface) },
                     rb @ None => {
-                        let backend_bits =
-                            wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
-                        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+                        //let backend_bits =
+                        //    wgpu::util::backend_bits_from_env().unwrap_or_else(wgpu::Backends::all);
+                        let backend_bits = Backends::VULKAN;
+                        let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
 
                         // Creating a surface first before creating the base, so that
                         // the base can use it to find a suitable adapter (GPU)
@@ -125,17 +134,20 @@ where
                 };
                 let size = surface.inner_size();
                 let base = self.base.as_ref().unwrap();
-                let swapchain_format = surface_handle.get_preferred_format(&base.adapter).unwrap();
+                let swapchain_format = surface_handle.get_supported_formats(&base.adapter)[0];
                 let config = wgpu::SurfaceConfiguration {
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                     format: swapchain_format,
                     width: size.width,
                     height: size.height,
                     present_mode: wgpu::PresentMode::Fifo, //TODO add option for disabling vsync
+                    alpha_mode: CompositeAlphaMode::Auto,
                 };
                 surface_handle.configure(&base.device, &config);
-                self.jobs
-                    .insert(sid, RenderJob::new(&base.device, config, surface_handle));
+                self.jobs.insert(
+                    sid,
+                    RenderJob::new(&base.device, config, surface_handle, MSAA::X4),
+                );
                 (self.jobs.get_mut(&sid).unwrap(), base)
             }
             Some(sh) => (sh, self.base.as_ref().unwrap()),
@@ -152,9 +164,9 @@ where
         size: Extent,
     ) -> Result<(), Self::Error> {
         bs!(resize);
-        let c = self.jobs.get_mut(&surface.id()).unwrap();
+        let job = self.jobs.get_mut(&surface.id()).unwrap();
         let base = self.base.as_mut().unwrap();
-        c.resize(&base.device, &base.queue, size);
+        job.resize(&base.device, &base.queue, size);
         be!(resize);
         Ok(())
     }
@@ -166,11 +178,9 @@ where
             .as_ref()
             .expect("Can't render with no surface mounted!");
         let job = self.jobs.get(&surface.id()).expect("Invalid surface id!");
-
         let frame = match job.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(_) => {
-                println!("lol");
                 job.surface.configure(&base.device, &job.config);
                 job.surface
                     .get_current_texture()
@@ -182,21 +192,79 @@ where
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
+        let render_pass_color_attachment_pre_pass = match job.msaa {
+            MSAA::X1 => wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            },
+            _ => wgpu::RenderPassColorAttachment {
+                view: job.multisampling_framebuffer.as_ref().unwrap(),
+                resolve_target: Some(&view),
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            },
+        };
+
+        let render_pass_color_attachment = match job.msaa {
+            MSAA::X1 => wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: Operations {
+                    load: LoadOp::Clear(Color::WHITE),
+                    store: true,
+                },
+            },
+            _ => wgpu::RenderPassColorAttachment {
+                view: job.multisampling_framebuffer.as_ref().unwrap(),
+                resolve_target: Some(&view),
+                ops: Operations {
+                    load: LoadOp::Clear(Color::WHITE),
+                    store: true,
+                },
+            },
+        };
+
         let mut encoder = base
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         {
+            /*let mut render_pass_compute =
+                encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None });
+            job.record_compute(&mut render_pass_compute);
+             */
+            let mut pre_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Stencil pre pass"),
+                // We don't need color attachments in this pass
+                color_attachments: &[],
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &job.stencil_framebuffer,
+                    depth_ops: None,
+                    stencil_ops: Some(Operations {
+                        load: LoadOp::Clear(0),
+                        store: true,
+                    }),
+                }),
+            });
+            job.record_prepass(&mut pre_pass);
+        }
+        {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
-                color_attachments: &[wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: None,
+                color_attachments: &[Some(render_pass_color_attachment)],
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &job.stencil_framebuffer,
+                    depth_ops: None,
+                    stencil_ops: Some(Operations {
+                        load: LoadOp::Load,
+                        store: false,
+                    }),
+                }),
             });
             job.record(&mut render_pass);
         }

@@ -1,7 +1,9 @@
 use crate::renderer::wgpu::primitive;
+use crate::renderer::MSAA;
+use crate::util;
 use std::borrow::Cow;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu_types::BufferUsages;
+use wgpu_types::{BufferUsages, MultisampleState};
 
 pub struct RectPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -11,8 +13,9 @@ pub struct RectPipeline {
     instance_buffer: Option<wgpu::Buffer>,
 }
 impl RectPipeline {
-    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
 
@@ -46,7 +49,7 @@ impl RectPipeline {
             label: Some("globals_bind_group"),
         });
 
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
                 "../../../../shader/rect.wgsl"
@@ -59,6 +62,12 @@ impl RectPipeline {
             push_constant_ranges: &[],
         });
 
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
@@ -70,14 +79,14 @@ impl RectPipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[config.format.into()],
+                targets: &[Some(config.format.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 cull_mode: Some(wgpu::Face::Back),
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
+            multisample,
             multiview: None,
         });
 
@@ -92,6 +101,7 @@ impl RectPipeline {
 
     pub fn resize(&self, queue: &wgpu::Queue, config: &wgpu::SurfaceConfiguration) {
         let globals = primitive::Globals {
+            width_height: util::pack(config.width as u16, config.height as u16),
             aspect_ratio: config.width as f32 / config.height as f32,
         };
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&[globals]));

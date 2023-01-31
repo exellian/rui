@@ -49,7 +49,7 @@ async fn main() {
         .resizable(true)
         .title("Test")
         .size(Extent {
-            width: 1440,
+            width: 900,
             height: 900,
         })
         .build()

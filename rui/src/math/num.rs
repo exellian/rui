@@ -81,6 +81,20 @@ impl Acos for f32 {
         self.acos()
     }
 }
+impl Min for f32 {
+    type Output = f32;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for f32 {
+    type Output = f32;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for f64 {}
 impl Add for f64 {}
@@ -114,6 +128,20 @@ impl Acos for f64 {
         self.acos()
     }
 }
+impl Min for f64 {
+    type Output = f64;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for f64 {
+    type Output = f64;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Add for isize {}
 impl AddInv for isize {}
@@ -121,6 +149,20 @@ impl Mul for isize {}
 impl Ring for isize {
     const ONE: Self = 1;
     const ZERO: Self = 0;
+}
+impl Min for isize {
+    type Output = isize;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for isize {
+    type Output = isize;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
 }
 
 impl Add for i8 {}
@@ -130,6 +172,20 @@ impl Ring for i8 {
     const ONE: Self = 1;
     const ZERO: Self = 0;
 }
+impl Min for i8 {
+    type Output = i8;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for i8 {
+    type Output = i8;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Add for i16 {}
 impl AddInv for i16 {}
@@ -137,6 +193,20 @@ impl Mul for i16 {}
 impl Ring for i16 {
     const ONE: Self = 1;
     const ZERO: Self = 0;
+}
+impl Min for i16 {
+    type Output = i16;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for i16 {
+    type Output = i16;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
 }
 
 impl Add for i32 {}
@@ -146,6 +216,20 @@ impl Ring for i32 {
     const ONE: Self = 1;
     const ZERO: Self = 0;
 }
+impl Min for i32 {
+    type Output = i32;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for i32 {
+    type Output = i32;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Add for i64 {}
 impl AddInv for i64 {}
@@ -153,6 +237,20 @@ impl Mul for i64 {}
 impl Ring for i64 {
     const ONE: Self = 1;
     const ZERO: Self = 0;
+}
+impl Min for i64 {
+    type Output = i64;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for i64 {
+    type Output = i64;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
 }
 
 impl Add for i128 {}
@@ -162,42 +260,173 @@ impl Ring for i128 {
     const ONE: Self = 1;
     const ZERO: Self = 0;
 }
+impl Min for i128 {
+    type Output = i128;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for i128 {
+    type Output = i128;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for isize {}
 impl Integer for isize {}
 
 impl Num for usize {}
 impl Integer for usize {}
+impl Min for usize {
+    type Output = usize;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for usize {
+    type Output = usize;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for i8 {}
 impl Integer for i8 {}
 
 impl Num for u8 {}
 impl Integer for u8 {}
+impl Min for u8 {
+    type Output = u8;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for u8 {
+    type Output = u8;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for i16 {}
 impl Integer for i16 {}
 
 impl Num for u16 {}
 impl Integer for u16 {}
+impl Min for u16 {
+    type Output = u16;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for u16 {
+    type Output = u16;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for i32 {}
 impl Integer for i32 {}
 
 impl Num for u32 {}
 impl Integer for u32 {}
+impl Min for u32 {
+    type Output = u32;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for u32 {
+    type Output = u32;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for i64 {}
 impl Integer for i64 {}
 
 impl Num for u64 {}
 impl Integer for u64 {}
+impl Min for u64 {
+    type Output = u64;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for u64 {
+    type Output = u64;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
 
 impl Num for i128 {}
 impl Integer for i128 {}
 
 impl Num for u128 {}
 impl Integer for u128 {}
+impl Min for u128 {
+    type Output = u128;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        return if self < rhs { self } else { rhs };
+    }
+}
+impl Max for u128 {
+    type Output = u128;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        return if self > rhs { self } else { rhs };
+    }
+}
+
+impl<T> Min for Result<T>
+where
+    T: Min<Output = T>,
+{
+    type Output = Self;
+
+    fn min(self, rhs: Self) -> Self::Output {
+        match self {
+            Defined(x) => match rhs {
+                Defined(y) => Defined(x.min(y)),
+                Undefined => Undefined,
+            },
+            Undefined => Undefined,
+        }
+    }
+}
+impl<T> Max for Result<T>
+where
+    T: Max<Output = T>,
+{
+    type Output = Self;
+
+    fn max(self, rhs: Self) -> Self::Output {
+        match self {
+            Defined(x) => match rhs {
+                Defined(y) => Defined(x.max(y)),
+                Undefined => Undefined,
+            },
+            Undefined => Undefined,
+        }
+    }
+}
 
 impl<T> Clone for Result<T>
 where

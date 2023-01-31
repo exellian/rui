@@ -5,7 +5,7 @@ use crate::platform::platform::surface::window::{WindowClass, WindowInit};
 use crate::platform::platform::util;
 use crate::surface::{SurfaceAttributes, SurfaceId};
 use lazy_static::lazy_static;
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, Win32Handle};
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle};
 use rui_util::Extent;
 use std::{io, mem, ptr};
 use windows_sys::Win32::Foundation::{HINSTANCE, HWND, RECT};
@@ -111,9 +111,15 @@ impl<'main, 'child> Surface<'main, 'child> {
 
 unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        let mut handle = Win32Handle::empty();
+        let mut handle = Win32WindowHandle::empty();
         handle.hwnd = self.handle as *mut _;
         handle.hinstance = self.hinstance as *mut _;
         RawWindowHandle::Win32(handle)
+    }
+}
+
+unsafe impl<'main, 'child> HasRawDisplayHandle for Surface<'main, 'child> {
+    fn raw_display_handle(&self) -> RawDisplayHandle {
+        RawDisplayHandle::Windows(WindowsDisplayHandle::empty())
     }
 }

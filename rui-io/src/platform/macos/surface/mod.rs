@@ -8,7 +8,7 @@ use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};
 use lazy_static::lazy_static;
 use objc::rc::autoreleasepool;
 use objc::runtime::{BOOL, NO, YES};
-use raw_window_handle::{AppKitHandle, HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{AppKitDisplayHandle, AppKitHandle, HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle};
 
 use delegate_state::DelegateState as WindowDelegateState;
 use rui_util::Extent;
@@ -199,6 +199,13 @@ unsafe impl<'main, 'child> HasRawWindowHandle for Surface<'main, 'child> {
         RawWindowHandle::AppKit(handle)
     }
 }
+unsafe impl<'main, 'child> HasRawDisplayHandle for Surface<'main, 'child> {
+    fn raw_display_handle(&self) -> RawDisplayHandle {
+        RawDisplayHandle::AppKit(AppKitDisplayHandle::empty())
+    }
+}
+
+
 impl<'main, 'child> Drop for Surface<'main, 'child> {
     fn drop(&mut self) {
         // Because the window can only be created on the main thread and cannot be moved

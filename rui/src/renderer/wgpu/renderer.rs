@@ -197,7 +197,7 @@ where
                 view: &view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: true,
                 },
             },
@@ -205,7 +205,7 @@ where
                 view: job.multisampling_framebuffer.as_ref().unwrap(),
                 resolve_target: Some(&view),
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                     store: true,
                 },
             },
@@ -216,7 +216,7 @@ where
                 view: &view,
                 resolve_target: None,
                 ops: Operations {
-                    load: LoadOp::Clear(Color::TRANSPARENT),
+                    load: LoadOp::Clear(Color::WHITE),
                     store: true,
                 },
             },
@@ -224,7 +224,7 @@ where
                 view: job.multisampling_framebuffer.as_ref().unwrap(),
                 resolve_target: Some(&view),
                 ops: Operations {
-                    load: LoadOp::Clear(Color::TRANSPARENT),
+                    load: LoadOp::Clear(Color::WHITE),
                     store: true,
                 },
             },
@@ -241,7 +241,7 @@ where
             let mut pre_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Stencil pre pass"),
                 // We don't need color attachments in this pass
-                color_attachments: &[Some(render_pass_color_attachment_pre_pass)],
+                color_attachments: &[],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: &job.stencil_framebuffer,
                     depth_ops: None,
@@ -254,7 +254,6 @@ where
             job.record_prepass(&mut pre_pass);
         }
         {
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
                 color_attachments: &[Some(render_pass_color_attachment)],
@@ -268,8 +267,6 @@ where
                 }),
             });
             job.record(&mut render_pass);
-
-
         }
 
         base.queue.submit(Some(encoder.finish()));

@@ -261,8 +261,10 @@ fn cubic_bezier_dis_approx(uv: vec2<f32>, p0: vec2<f32>, p1: vec2<f32>, p2: vec2
 
 @vertex
 fn vs_main(model: VertexInput) -> VertexOutput {
+    let pos = vec2(model.pos.x / globals.aspect_ratio, model.pos.y);
+
     var out: VertexOutput;
-    out.pos = vec4<f32>(model.pos, 0.0, 1.0);
+    out.pos = vec4<f32>(pos, 0.0, 1.0);
     out.uv = model.pos;
     out.segment_index = model.segment_index;
     return out;
@@ -272,7 +274,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 fn fs_main(model: VertexOutput) -> @location(0) vec4<f32> {
 
     let extent: vec2<u32> = unpack(globals.width_height);
-    let max_pixel_size: f32 = min(2.0f / f32(extent.x), 2.0f / f32(extent.y));
+    let max_pixel_size: f32 = max(2.0f / f32(extent.x), 2.0f / f32(extent.y));
     let segment: PathSegment = all_paths[model.segment_index];
     let line_sgn = line_sign(model.uv, segment.param0, segment.param3);
     let line_dis = line_dis(model.uv, segment.param0, segment.param3);
@@ -281,29 +283,33 @@ fn fs_main(model: VertexOutput) -> @location(0) vec4<f32> {
     let dis = cubic_bezier_dis_approx(model.uv, segment.param0, segment.param1, segment.param2, segment.param3, &t_min);
     let sgn = cubic_bezier_sign2(model.uv, segment.param0, segment.param1, segment.param2, segment.param3, t_min);
     let s_dist = dis * sgn;
-    var alpha = 0.0;
 
-    var alpha = 1.0;
-    if (dis <= max_pixel_size) {
-        alpha = dis / max_pixel_size;
-    }
+    let px = dpdx(model.uv);
+    let py = dpdy(model.uv);
+
+    let fx = (2.0*model.uv.x)*px.x - px.y;
+    let fy = (2.0*model.uv.x)*py.x - py.y;
+
+    let sd = (model.uv.x*model.uv.x - model.uv.y) / sqrt(fx*fx + fy*fy);
+    let alpha = 0.5 - sd;
 
     // Fragment is on the line
-    if (line_dis < 0.00001) {
-        return vec4<f32>(1.0, 0.0, 0.0, alpha);
+    if (line_dis <= max_pixel_size * 2. && sgn >= 0.) {
+        return vec4(smoothstep(0., max_pixel_size * 1., dis));
+        //discard;
     }
 
     /// This is the concave region
-    if (line_sgn >= 0. && sgn > 0.) {
-        return vec4<f32>(1.0, 0.0, 0.0, alpha);
+    if (line_sgn >= 0. && sgn >= 0.) {
+        return vec4(smoothstep(0., max_pixel_size * 1., dis));
     }
     /// This is the convex region
     if (line_sgn <= 0. && sgn < 0.) {
-        return vec4<f32>(0.0, 1.0, 0.0, 1.0);
+        //return vec4<f32>(0.0, 1.0, 0.0, 1.0);
     }
 
     if (dis < max_pixel_size && line_sgn <= 0.) {
-        return vec4<f32>(0.0, 1.0, 0.0, 1. - alpha);
+        //return vec4<f32>(0.0, 1.0, 0.0, 1. - alpha);
     }
 
     discard;

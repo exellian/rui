@@ -94,7 +94,8 @@ pub struct PathPipeline {
 
     /// Pipeline for rendering curve-segments
     /// to the stencil buffer
-    segments_pipeline: wgpu::RenderPipeline,
+    segments_convex_pipeline: wgpu::RenderPipeline,
+    segments_concave_pipeline: wgpu::RenderPipeline,
     segments_buffer_bind_group_layout: wgpu::BindGroupLayout,
 
     /// Final pipeline which uses the stencil buffer to draw
@@ -108,9 +109,24 @@ impl PathPipeline {
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, msaa: &MSAA) -> Self {
         let (globals_buffer, globals_bind_group_layout, globals_bind_group) =
             Self::build_globals_buffer(device, config);
-        let fans_pipeline = Self::build_fans_pipeline(device, config, msaa);
-        let (segments_pipeline, segments_buffer_bind_group_layout) =
-            Self::build_segments_pipeline(device, config, msaa, &globals_bind_group_layout);
+        let fans_pipeline =
+            Self::build_fans_pipeline(device, config, msaa, &globals_bind_group_layout);
+        let segments_buffer_bind_group_layout =
+            Self::build_segments_buffer_bind_group_layout(device);
+        let segments_concave_pipeline = Self::build_segments_concave_pipeline(
+            device,
+            config,
+            msaa,
+            &segments_buffer_bind_group_layout,
+            &globals_bind_group_layout,
+        );
+        let segments_convex_pipeline = Self::build_segments_convex_pipeline(
+            device,
+            config,
+            msaa,
+            &segments_buffer_bind_group_layout,
+            &globals_bind_group_layout,
+        );
         let color_pipeline = Self::build_color_pipeline(device, config, msaa);
 
         PathPipeline {
@@ -118,7 +134,8 @@ impl PathPipeline {
             globals_bind_group,
             globals_bind_group_layout,
             fans_pipeline,
-            segments_pipeline,
+            segments_convex_pipeline,
+            segments_concave_pipeline,
             segments_buffer_bind_group_layout,
             color_pipeline,
             mount: None,
@@ -255,6 +272,7 @@ impl PathPipeline {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         msaa: &MSAA,
+        globals_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let multisample = wgpu::MultisampleState {
             count: msaa.clone().into(),
@@ -271,7 +289,7 @@ impl PathPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[],
+            bind_group_layouts: &[globals_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -286,7 +304,7 @@ impl PathPipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(config.format.into())],
+                targets: &[],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -307,8 +325,8 @@ impl PathPipeline {
                         fail_op: StencilOperation::Keep,
                         // See Kokojima resolution independent rendering paper.
                         // We simply invert the stencil value for each front and back face
-                        depth_fail_op: StencilOperation::Invert,
-                        pass_op: StencilOperation::Invert,
+                        depth_fail_op: StencilOperation::IncrementWrap,
+                        pass_op: StencilOperation::IncrementWrap,
                     },
                     back: StencilFaceState {
                         compare: CompareFunction::Always,
@@ -316,8 +334,8 @@ impl PathPipeline {
                         // For each back face we decrement the the stencil buffer at this
                         // fragment. Later in the color pass we just use fragments that have
                         // a stencil value other than zero
-                        depth_fail_op: StencilOperation::Invert,
-                        pass_op: StencilOperation::Invert,
+                        depth_fail_op: StencilOperation::DecrementWrap,
+                        pass_op: StencilOperation::DecrementWrap,
                     },
                     read_mask: !0,
                     write_mask: !0,
@@ -331,12 +349,29 @@ impl PathPipeline {
         pipeline
     }
 
-    fn build_segments_pipeline(
+    fn build_segments_buffer_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("bind-group-layout of segments storage buffer"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        })
+    }
+
+    fn build_segments_convex_pipeline(
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         msaa: &MSAA,
+        segments_bind_group_layout: &wgpu::BindGroupLayout,
         globals_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> (wgpu::RenderPipeline, wgpu::BindGroupLayout) {
+    ) -> wgpu::RenderPipeline {
         let multisample = wgpu::MultisampleState {
             count: msaa.clone().into(),
             mask: !0,
@@ -346,28 +381,13 @@ impl PathPipeline {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
-                "../../../../shader/path/segment.wgsl"
+                "../../../../shader/path/segment_convex.wgsl"
             ))),
         });
 
-        let segments_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("bind-group-layout of segments storage buffer"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&segments_bind_group_layout, globals_bind_group_layout],
+            bind_group_layouts: &[segments_bind_group_layout, globals_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -382,14 +402,7 @@ impl PathPipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState {
-                        color: BlendComponent::REPLACE,
-                        alpha: BlendComponent::REPLACE,
-                    }),
-                    write_mask: Default::default(),
-                })],
+                targets: &[],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -410,16 +423,16 @@ impl PathPipeline {
                         compare: CompareFunction::Always,
                         // Else we clear the fragment
                         fail_op: StencilOperation::Zero,
-                        depth_fail_op: StencilOperation::Invert,
+                        depth_fail_op: StencilOperation::IncrementWrap,
                         // When the value is zero we increment the value
-                        pass_op: StencilOperation::Invert,
+                        pass_op: StencilOperation::IncrementWrap,
                     },
                     // We do the same for the back face
                     back: StencilFaceState {
                         compare: CompareFunction::Always,
                         fail_op: StencilOperation::Zero,
-                        depth_fail_op: StencilOperation::Invert,
-                        pass_op: StencilOperation::Invert,
+                        depth_fail_op: StencilOperation::IncrementWrap,
+                        pass_op: StencilOperation::IncrementWrap,
                     },
                     read_mask: !0,
                     write_mask: !0,
@@ -430,7 +443,88 @@ impl PathPipeline {
             multisample,
         });
 
-        (pipeline, segments_bind_group_layout)
+        pipeline
+    }
+
+    fn build_segments_concave_pipeline(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        msaa: &MSAA,
+        segments_bind_group_layout: &wgpu::BindGroupLayout,
+        globals_bind_group_layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::RenderPipeline {
+        let multisample = wgpu::MultisampleState {
+            count: msaa.clone().into(),
+            mask: !0,
+            alpha_to_coverage_enabled: true,
+        };
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!(
+                "../../../../shader/path/segment_concave.wgsl"
+            ))),
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            bind_group_layouts: &[segments_bind_group_layout, globals_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: None,
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[SegmentVertex::DESCRIPTION],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: Some(DepthStencilState {
+                format: TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: false,
+                depth_compare: CompareFunction::Always,
+                stencil: StencilState {
+                    front: StencilFaceState {
+                        // We check if the current value is equal zero
+                        compare: CompareFunction::Greater,
+                        // Else we clear the fragment
+                        fail_op: StencilOperation::Zero,
+                        depth_fail_op: StencilOperation::DecrementWrap,
+                        // When the value is zero we increment the value
+                        pass_op: StencilOperation::DecrementWrap,
+                    },
+                    // We do the same for the back face
+                    back: StencilFaceState {
+                        compare: CompareFunction::Greater,
+                        fail_op: StencilOperation::Zero,
+                        depth_fail_op: StencilOperation::DecrementWrap,
+                        pass_op: StencilOperation::DecrementWrap,
+                    },
+                    read_mask: !0,
+                    write_mask: !0,
+                },
+                bias: DepthBiasState::default(),
+            }),
+            multiview: None,
+            multisample,
+        });
+
+        pipeline
     }
 
     fn build_triangle_fan_and_curve_triangles(
@@ -538,20 +632,25 @@ impl PathPipeline {
         if let Some(mount) = &self.mount {
             // Draw the triangle fans into the stencil buffer
             render_pass.set_pipeline(&self.fans_pipeline);
+            render_pass.set_bind_group(0, &self.globals_bind_group, &[]);
             render_pass.set_index_buffer(mount.fan_index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.set_vertex_buffer(0, mount.fan_vertex_buffer.slice(..));
             render_pass.draw_indexed(0..mount.fan_index_count, 0, 0..1);
 
             // Change the pipeline so that the curve segments are drawn into the stencil buffer
-            render_pass.set_pipeline(&self.segments_pipeline);
+            render_pass.set_pipeline(&self.segments_convex_pipeline);
             // We need to compare the current value with zero.
+            render_pass.set_stencil_reference(0);
             // if the stencil buffer fragment is zero then we draw it.
             // Else we delete the current fragment
-            render_pass.set_stencil_reference(0);
             render_pass.set_bind_group(0, &mount.segments_buffer_bind_group, &[]);
             render_pass.set_bind_group(1, &self.globals_bind_group, &[]);
             render_pass.set_index_buffer(mount.segment_index_buffer.slice(..), IndexFormat::Uint16);
             render_pass.set_vertex_buffer(0, mount.segment_vertex_buffer.slice(..));
+            render_pass.draw_indexed(0..mount.segment_index_count, 0, 0..1);
+
+            render_pass.set_pipeline(&self.segments_concave_pipeline);
+            render_pass.set_stencil_reference(0);
             render_pass.draw_indexed(0..mount.segment_index_count, 0, 0..1);
         }
     }
